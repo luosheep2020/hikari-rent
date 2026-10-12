@@ -1,0 +1,574 @@
+/* 地图容器 */
+.container {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: calc(100dvh - 76px);
+  min-height: 520px;
+  overflow: hidden;
+  background: #edf3ef;
+}
+
+/* 房源照片 */
+.image {
+  object-fit: cover;
+  object-position: center;
+}
+
+/* 价格标记 */
+.priceMarker {
+  position: relative;
+  padding: 7px 12px;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(20, 50, 35, 0.2);
+  cursor: pointer;
+}
+
+.priceMarker::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  background: var(--primary);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.selectedMarker {
+  border-color: var(--primary);
+  background: #fff;
+  color: var(--primary);
+}
+
+.selectedMarker::after {
+  background: #fff;
+  border-right: 2px solid var(--primary);
+  border-bottom: 2px solid var(--primary);
+}
+
+/* 顶部悬浮筛选栏 */
+.filters {
+  position: absolute;
+  z-index: 3;
+  top: 24px;
+  right: 24px;
+  left: 414px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 438px);
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(20, 50, 35, 0.12);
+}
+
+.filterField {
+  flex: 0 1 160px;
+  min-width: 0;
+}
+
+.filterSelect {
+  width: 160px;
+  max-width: 100%;
+}
+
+.filterField:first-child {
+  flex-basis: 300px;
+}
+
+.filterField label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.filterField label > :first-child {
+  color: var(--primary);
+  font-size: 13px;
+}
+
+
+.filterField:first-child .filterSelect {
+  width: 190px;
+}
+
+.clearButton {
+  align-self: flex-end;
+  flex-shrink: 0;
+}
+
+/* 左侧房源列表 */
+.listPanel {
+  position: absolute;
+  z-index: 1;
+  top: 24px;
+  bottom: 80px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  width: 370px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(20, 50, 35, 0.14);
+}
+
+.listHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.listHeading h2 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.listHeading > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.listBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 单条房源 */
+.listItem {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 18px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.listItem:last-child {
+  border-bottom: none;
+}
+
+.listItem:hover {
+  background: #f5f8f6;
+}
+
+.listItem.selectedListItem {
+  background: #edf5f0;
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.listItem:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.listImage {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #eaf0ec;
+}
+
+.listInformation {
+  min-width: 0;
+}
+
+.listName {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.listPrice {
+  margin: 0 0 4px;
+  color: var(--primary);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.listPrice span {
+  margin-left: 3px;
+  font-size: 13px;
+}
+
+.listMeta,
+.listStation {
+  margin: 0 0 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.listTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.listTags span {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #f0f3f1;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.listEmpty {
+  margin: 0;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.8;
+  text-align: center;
+}
+
+/* 右侧房源预览 */
+.preview {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 72px;
+  width: 320px;
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(20, 50, 35, 0.18);
+  transform: translateY(-50%);
+}
+
+.previewImage {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  margin: 10px 10px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eaf0ec;
+}
+
+.closeButton {
+  appearance: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: #edf5f0;
+  color: var(--primary);
+}
+
+.previewContent {
+  padding: 16px;
+}
+
+.previewName {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.previewSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.previewPrice {
+  margin: 0;
+  color: var(--primary);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.previewPrice span {
+  margin-left: 3px;
+  font-size: 14px;
+}
+
+.previewMeta,
+.previewStation {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.previewStation {
+  margin: 8px 0 12px;
+}
+
+.previewTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.previewTags span {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #f0f4f1;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.detailLink {
+  display: block;
+  padding: 11px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.detailLink:hover {
+  background: #216857;
+}
+
+.closeButton:focus-visible,
+.detailLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* 地图错误提示 */
+.error {
+  display: grid;
+  place-items: center;
+  min-height: 520px;
+  padding: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* 中等桌面屏幕 */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .listPanel {
+    left: 16px;
+    width: 320px;
+  }
+
+  .listItem {
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .listImage {
+    height: 120px;
+  }
+
+  .filters {
+    right: 16px;
+    left: 352px;
+    max-width: calc(100% - 368px);
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .filterField {
+    flex-basis: 110px;
+  }
+
+  .filterField:first-child {
+    flex-basis: 160px;
+  }
+
+  .filterSelect {
+    width: 110px;
+  }
+
+  .filterField:first-child .filterSelect {
+    width: 160px;
+  }
+
+  .preview {
+    right: 56px;
+    width: 280px;
+  }
+}
+
+/* 平板：顶部筛选、底部列表 */
+@media (max-width: 900px) {
+  .filters {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+  }
+
+  .filterField {
+    flex: 1 1 0;
+  }
+
+  .filterField:first-child {
+    flex: 1.5 1 0;
+  }
+
+  .filterSelect,
+  .filterField:first-child .filterSelect {
+    width: 100%;
+  }
+
+  .listPanel {
+    top: auto;
+    right: 16px;
+    bottom: 24px;
+    left: 16px;
+    width: auto;
+    height: 240px;
+  }
+
+  .listHeading {
+    padding: 12px 16px;
+  }
+
+  .listHeading h2 {
+    font-size: 16px;
+  }
+
+  .listItem {
+    padding: 12px 16px;
+  }
+
+  .listImage {
+    height: 110px;
+  }
+
+  .preview {
+    top: auto;
+    right: 16px;
+    bottom: 24px;
+    left: 16px;
+    width: auto;
+    max-height: 55%;
+    transform: none;
+  }
+
+  .previewImage {
+    aspect-ratio: 3 / 1;
+  }
+}
+
+/* 手机导航栏有两行 */
+@media (max-width: 768px) {
+  .container {
+    height: calc(100dvh - 112px);
+  }
+}
+
+/* 手机筛选栏分成两行 */
+@media (max-width: 600px) {
+  .filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    gap: 10px 8px;
+    padding: 12px;
+  }
+
+  .filterField:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .clearButton {
+    align-self: end;
+  }
+}
+
+/* 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .listItem {
+    transition: none;
+  }
+}
+.filterActions {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.currentPositionMarker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #1677ff;
+  box-shadow: 0 0 0 7px rgba(22, 119, 255, 0.18);
+}
+
+@media (max-width: 600px) {
+  .filters {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+  }
+
+  .filterActions {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}

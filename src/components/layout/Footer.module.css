@@ -1,0 +1,110 @@
+.footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: #fff;
+}
+
+.inner {
+  width: min(var(--content-width), calc(100% - 48px));
+  margin: 0 auto;
+  padding: 28px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.brandIcon {
+  font-size: 30px;
+}
+
+.brandName {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.tagline {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 20px;
+}
+
+.links a {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.links a:hover {
+  color: var(--primary);
+}
+
+.information {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.information p {
+  margin: 0 0 4px;
+  font-size: 10px;
+}
+
+.information small {
+  font-size: 11px;
+}
+
+.brand:focus-visible,
+.links a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+@media (max-width: 1100px) {
+  .inner {
+    flex-wrap: wrap;
+  }
+
+  .links {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .inner {
+    width: calc(100% - 32px);
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px 0;
+  }
+
+  .links {
+    order: initial;
+    gap: 12px 18px;
+  }
+
+  .information {
+    text-align: left;
+  }
+}

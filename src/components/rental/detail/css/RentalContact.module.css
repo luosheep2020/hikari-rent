@@ -1,0 +1,110 @@
+.panel {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.title {
+  margin: 0 0 18px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.agent {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  flex-shrink: 0;
+  background: #e8f1ec;
+  color: var(--primary);
+}
+
+.agentInfo {
+  min-width: 0;
+}
+
+.role {
+  margin: 0 0 2px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.name {
+  margin: 0 0 3px;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.company {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.hours {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chatButton,
+.phoneButton {
+  height: 46px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.phoneButton:not(:disabled) {
+  border-color: var(--primary);
+  background: #fff;
+  color: var(--primary);
+}
+
+.phoneButton:not(:disabled):hover {
+  border-color: #216857;
+  background: #edf5f0;
+  color: #216857;
+}
+.phoneNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: #edf5f0;
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.phoneNumber span {
+  user-select: text;
+}
+@media (max-width: 600px) {
+  .panel {
+    padding: 18px;
+  }
+}

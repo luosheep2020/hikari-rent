@@ -1,0 +1,163 @@
+.panel {
+  min-width: 0;
+  padding: 20px;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-bottom: 22px;
+}
+
+.heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.clearButton {
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+
+  color: var(--primary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.clearButton:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sectionTitle :global(.anticon) {
+  color: var(--primary);
+  font-size: 15px;
+}
+
+.fieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.control {
+  width: 100%;
+}
+
+.rentInputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.rentInput {
+  width: 100%;
+}
+
+.rangeSeparator {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.rentSlider {
+  margin: 16px 8px 12px;
+}
+
+.hint {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.error {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-size: 11px;
+}
+
+.floorPlanOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 6px;
+  width: 100%;
+}
+
+.equipmentOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 8px;
+  width: 100%;
+}
+
+.floorPlanOptions :global(.ant-checkbox-wrapper),
+.equipmentOptions :global(.ant-checkbox-wrapper) {
+  align-items: flex-start;
+  min-width: 0;
+  margin: 0;
+
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.floorPlanOptions :global(.ant-checkbox),
+.equipmentOptions :global(.ant-checkbox) {
+  margin-top: 1px;
+}
+
+.floorPlanOptions :global(.ant-checkbox-wrapper > span:last-child),
+.equipmentOptions :global(.ant-checkbox-wrapper > span:last-child) {
+  padding-inline: 5px;
+  overflow-wrap: anywhere;
+}
+
+.searchButton {
+  height: 44px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    padding: 18px 16px;
+  }
+
+  .floorPlanOptions :global(.ant-checkbox-wrapper),
+  .equipmentOptions :global(.ant-checkbox-wrapper) {
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,124 @@
+.panel {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.label {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0 0 12px;
+  color: var(--primary);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.priceUnit {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.managementFee {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.managementFee strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.fees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 20px 0 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.fees > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.fees dt {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.fees dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 20px 0 24px;
+}
+
+.summary > div {
+  padding: 0 10px;
+  border-right: 1px solid var(--border);
+}
+
+.summary > div:first-child {
+  padding-left: 0;
+}
+
+.summary > div:last-child {
+  padding-right: 0;
+  border-right: none;
+}
+
+.summary dt {
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.summary dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.favoriteButton {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.favoriteButton.favorited {
+  border-color: var(--primary);
+  background: #edf5f0;
+  color: var(--primary);
+}
+
+@media (max-width: 600px) {
+  .panel {
+    padding: 20px;
+  }
+
+  .price {
+    font-size: 36px;
+  }
+}

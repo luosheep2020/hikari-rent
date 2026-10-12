@@ -1,0 +1,236 @@
+.section {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e3eae6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.title {
+  margin: 0 0 18px;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 信息表格 */
+.table :global(.ant-descriptions-view) {
+  overflow: hidden;
+  border-radius: 5px;
+}
+
+.table :global(table) {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.table :global(.ant-descriptions-item-label) {
+  width: 104px;
+  background: #f5f7f6;
+  color: #56635c;
+  font-size: 13px;
+}
+
+.table :global(.ant-descriptions-item-content) {
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.table :global(.ant-descriptions-item-label),
+.table :global(.ant-descriptions-item-content) {
+  padding: 10px 12px;
+}
+
+.note {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+/* 建筑信息与户型图 */
+.propertyLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 16px;
+  align-items: start;
+}
+
+.floorPlan {
+  margin: 0;
+}
+
+.floorPlanImage {
+  position: relative;
+  height: 240px;
+}
+
+.planImage {
+  object-fit: contain;
+}
+
+.floorPlan figcaption {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* 设备、条件 */
+.conditionRows {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.conditionRow {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.conditionLabel {
+  margin: 0;
+  padding-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: #eaf3ee;
+  color: var(--primary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 地址、交通 */
+.locationLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.mapPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 210px;
+  border: 1px dashed #c7d8cd;
+  border-radius: 6px;
+  background: #edf3ef;
+  color: #64716b;
+  font-size: 12px;
+}
+
+.mapSymbol {
+  color: var(--primary);
+  font-size: 32px;
+}
+
+.accessInfo {
+  min-width: 0;
+}
+
+.address {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.accessTitle {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stationList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stationList li {
+  padding: 10px;
+  border-radius: 6px;
+  background: #f5f8f6;
+}
+
+.stationLine {
+  margin: 0 0 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.stationDetail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.walkingTime {
+  color: var(--text-secondary);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.description {
+  margin: 0;
+  color: #56635c;
+  font-size: 13px;
+  line-height: 1.95;
+  white-space: pre-line;
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .propertyLayout,
+  .locationLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .floorPlanImage {
+    height: 200px;
+  }
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 18px;
+  }
+
+  .conditionRow {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .table :global(.ant-descriptions-item-label) {
+    width: 90px;
+  }
+}

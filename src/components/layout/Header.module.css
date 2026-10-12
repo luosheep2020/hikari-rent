@@ -1,0 +1,197 @@
+.header {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.dropdownArrow {
+  margin-left: 2px;
+  font-size: 10px;
+}
+.inner {
+  width: min(var(--content-width), calc(100% - 48px));
+  min-height: 76px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+/* Logo */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--primary);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+
+.brandIcon {
+  font-size: 30px;
+}
+
+/* Logo 右侧标语 */
+.tagline {
+  flex-shrink: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* 导航 */
+.navigation {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  gap: 28px;
+  margin-left: auto;
+}
+
+.navLink {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.navLink:hover,
+.active {
+  color: var(--primary);
+}
+
+.active {
+  border-bottom-color: var(--primary);
+}
+
+/* 登录按钮 / 个人中心链接 */
+.login {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.login:hover {
+  color: var(--primary);
+}
+
+/* 键盘操作时的焦点 */
+.brand:focus-visible,
+.navLink:focus-visible,
+.login:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+/* 中等屏幕隐藏标语 */
+@media (max-width: 1100px) {
+  .tagline {
+    display: none;
+  }
+}
+
+/* 小屏幕导航换到第二行 */
+@media (max-width: 768px) {
+  .inner {
+    width: calc(100% - 32px);
+    min-height: 68px;
+    flex-wrap: wrap;
+    column-gap: 16px;
+    row-gap: 0;
+    padding-top: 16px;
+  }
+
+  .brand {
+    font-size: 22px;
+  }
+
+  .brandIcon {
+    font-size: 26px;
+  }
+
+  .login {
+    margin-left: auto;
+  }
+
+  .navigation {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: 24px;
+    overflow-x: auto;
+  }
+  .navLink:hover,
+  .active {
+    color: var(--primary);
+  }
+
+  .active {
+    border-bottom-color: var(--primary);
+  }
+}
+/* 首页：Header 覆盖在 Hero 图片上 */
+.homeHeader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  width: 100%;
+
+  background: rgba(255, 255, 255, 0.58);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.homeHeader .brand {
+  color: var(--primary);
+}
+
+.homeHeader .navLink,
+.homeHeader .login {
+  color: #26332e;
+}
+
+.homeHeader .navLink:hover,
+.homeHeader .login:hover {
+  color: var(--primary);
+}

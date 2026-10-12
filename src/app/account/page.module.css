@@ -1,0 +1,200 @@
+.container {
+  width: min(var(--content-width), calc(100% - 48px));
+  margin: 36px auto 64px;
+}
+
+.pageTitle {
+  margin: 0 0 24px;
+  font-size: 28px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 24px;
+}
+
+.sidebar,
+.content,
+.loginPanel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.userInfo {
+  padding: 36px 24px 28px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.avatar {
+  background: #e8f1ec;
+  color: var(--primary);
+}
+
+.nickname {
+  margin: 16px 0 6px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.userLabel {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 16px;
+}
+
+.menuButton {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.menuButton:hover {
+  background: #f0f5f2;
+  color: var(--primary);
+}
+
+.menuButton.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.menuButton:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.content {
+  min-width: 0;
+  min-height: 480px;
+  padding: 32px 36px;
+}
+
+.contentHeading {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contentHeading h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.contentHeading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.formArea {
+  max-width: 440px;
+}
+
+.loginPanel {
+  padding: 36px;
+}
+
+.loginPanel h1 {
+  margin-top: 0;
+}
+
+.loginPanel p {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: calc(100% - 32px);
+    margin-top: 24px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .userInfo {
+    padding: 24px;
+  }
+
+  .menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .menuButton {
+    flex: 1;
+    width: auto;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .content {
+    min-height: 0;
+    padding: 24px;
+  }
+}
+.avatarButton {
+  position: relative;
+  display: inline-flex;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.avatarOverlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 3px 0 5px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+}
+
+.avatarButton:hover .avatarOverlay {
+  background: rgba(20, 84, 71, 0.85);
+}
+
+.avatarButton:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.avatarButton:disabled {
+  cursor: wait;
+}
+
+.avatarHint {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}

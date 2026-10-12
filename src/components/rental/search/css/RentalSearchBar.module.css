@@ -1,0 +1,50 @@
+.searchBar {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  border-radius: 8px;
+}
+
+.input :global(.ant-input-prefix) {
+  margin-right: 12px;
+  color: var(--primary);
+  font-size: 18px;
+}
+
+.searchButton {
+  flex-shrink: 0;
+  min-width: 140px;
+  height: 46px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .searchBar {
+    gap: 8px;
+  }
+
+  .searchButton {
+    min-width: 100px;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 380px) {
+  .searchBar {
+    flex-direction: column;
+  }
+
+  .searchButton {
+    width: 100%;
+  }
+}

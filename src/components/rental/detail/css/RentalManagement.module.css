@@ -1,0 +1,99 @@
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.9fr) minmax(0, 0.7fr);
+  align-items: center;
+  gap: 28px;
+  margin-top: 24px;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.information,
+.companyDetails {
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.company {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background: #edf5f0;
+  color: var(--primary);
+  font-size: 30px;
+}
+
+.name {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.address,
+.license {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.emailButton {
+  width: auto;
+  justify-self: end;
+  min-height: 40px;
+  height: auto;
+  padding: 8px 18px;
+  font-size: 13px;
+  white-space: normal;
+}
+
+.note {
+  margin: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.9;
+}
+@media (max-width: 600px) {
+  .emailButton {
+    width: 100%;
+  }
+}
+@media (max-width: 1000px) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+  }
+
+  .note {
+    grid-column: 1 / -1;
+    padding: 14px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 600px) {
+  .panel {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px;
+  }
+}
