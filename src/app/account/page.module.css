@@ -198,3 +198,32 @@
   color: var(--text-secondary);
   font-size: 11px;
 }
+.container {
+  width: min(1480px, calc(100% - 48px));
+}
+
+.layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.messageContent {
+  padding: 24px;
+}
+
+.messageContent .contentHeading {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: calc(100% - 32px);
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .messageContent {
+    padding: 16px;
+  }
+}

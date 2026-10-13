@@ -36,20 +36,17 @@ export default function RentalContact({
   const phoneVisible =
     Boolean(user) && phoneViewerId === user?.id;
 
-  function handleChat() {
+  const handleChat = () => {
     if (!user) {
-      message.info('担当者に相談するにはログインしてください');
       openLogin();
+      message.info('ご相談にはログインが必要です');
       return;
     }
 
-    const params = new URLSearchParams({
-      rentalId: rental.id,
-      agentId: agent.id,
-    });
-
-    router.push(`/messages?${params.toString()}`);
-  }
+    router.push(
+      `/account?tab=messages&rentalId=${encodeURIComponent(rental.id)}`,
+    );
+  };
 
   function handleShowPhone() {
     if (!user) {

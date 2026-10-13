@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {App, Dropdown, type MenuProps} from 'antd';
 import {usePathname} from 'next/navigation';
 import {useAuthStore} from '@/stores/useAuthStore';
-import {DownOutlined} from '@ant-design/icons';
+import {DownOutlined, MessageOutlined} from '@ant-design/icons';
 import {useRouter} from 'next/navigation';
 import {HomeOutlined, HeartOutlined, UserOutlined} from '@ant-design/icons';
 import styles from './Header.module.css';
@@ -29,6 +29,11 @@ export default function Header() {
       icon: <UserOutlined/>,
     },
     {
+      key: 'messages',
+      label: 'メッセージ',
+      icon: <MessageOutlined/>,
+    },
+    {
       key: 'favorites',
       label: 'お気に入り',
       icon: <HeartOutlined/>,
@@ -46,6 +51,8 @@ export default function Header() {
   const handleAccountMenuClick: MenuProps['onClick'] = ({key}) => {
     if (key === 'account') {
       router.push('/account');
+    } else if (key === 'messages') {
+      router.push('/account?tab=messages');
     } else if (key === 'favorites') {
       router.push('/favorites');
     } else if (key === 'logout') {

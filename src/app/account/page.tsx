@@ -1,47 +1,113 @@
 'use client';
 
-import {useState} from 'react';
-import {App, Avatar, Button, Upload} from 'antd';
-import type {UploadProps} from 'antd';
+import { Suspense, useState } from 'react';
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from 'next/navigation';
+import { App, Avatar, Button, Upload } from 'antd';
+import type { UploadProps } from 'antd';
 import {
   LockOutlined,
+  MessageOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 
 import ProfileSettings from '@/components/account/ProfileSettings';
 import PasswordSettings from '@/components/account/PasswordSettings';
-import {useAuthStore} from '@/stores/useAuthStore';
+
+import { useAuthStore } from '@/stores/useAuthStore';
 
 import styles from './page.module.css';
+import MessageCenter from "@/components/messages/MessageCenter";
 
-type SettingTab = 'profile' | 'password';
+type SettingTab = 'profile' | 'password' | 'messages';
 
 const settings = [
   {
     key: 'profile' as const,
     label: '基本情報',
-    icon: <SettingOutlined/>,
+    icon: <SettingOutlined />,
+  },
+  {
+    key: 'messages' as const,
+    label: 'メッセージ',
+    icon: <MessageOutlined />,
   },
   {
     key: 'password' as const,
     label: 'パスワード変更',
-    icon: <LockOutlined/>,
+    icon: <LockOutlined />,
   },
 ];
 
-export default function AccountPage() {
+const headings: Record<
+  SettingTab,
+  { title: string; description: string }
+> = {
+  profile: {
+    title: '基本情報',
+    description: '表示名や連絡先を変更できます。',
+  },
+  messages: {
+    title: 'メッセージ',
+    description: 'お部屋について、担当者に相談できます。',
+  },
+  password: {
+    title: 'パスワード変更',
+    description: 'アカウントのパスワードを変更します。',
+  },
+};
+
+function AccountContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { message } = App.useApp();
+
   const user = useAuthStore((state) => state.user);
   const openLogin = useAuthStore((state) => state.openLogin);
+  const updateProfile = useAuthStore(
+    (state) => state.updateProfile,
+  );
 
-  const [activeTab, setActiveTab] = useState<SettingTab>('profile');
-  const {message} = App.useApp();
-
-  const updateProfile = useAuthStore((state) => state.updateProfile);
   const [uploading, setUploading] = useState(false);
 
+  // 根据 URL 决定显示哪个组件。
+  const tab = searchParams.get('tab');
+
+  const activeTab: SettingTab =
+    tab === 'messages' || tab === 'password'
+      ? tab
+      : 'profile';
+
+  const handleTabChange = (nextTab: SettingTab) => {
+    const params = new URLSearchParams(
+      searchParams.toString(),
+    );
+
+    if (nextTab === 'profile') {
+      params.delete('tab');
+    } else {
+      params.set('tab', nextTab);
+    }
+
+    const query = params.toString();
+
+    router.push(
+      query ? `${pathname}?${query}` : pathname,
+      { scroll: false },
+    );
+  };
+
   const beforeUpload: UploadProps['beforeUpload'] = (file) => {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (
+      !['image/jpeg', 'image/png', 'image/webp'].includes(
+        file.type,
+      )
+    ) {
       message.error('JPEG・PNG・WebPの画像を選択してください');
       return Upload.LIST_IGNORE;
     }
@@ -54,6 +120,7 @@ export default function AccountPage() {
     setUploading(true);
 
     const reader = new FileReader();
+    const uploadingUserId = user?.id;
 
     reader.onload = () => {
       const currentUser = useAuthStore.getState().user;
@@ -61,7 +128,7 @@ export default function AccountPage() {
       if (
         typeof reader.result === 'string' &&
         currentUser &&
-        currentUser.id === user?.id
+        currentUser.id === uploadingUserId
       ) {
         updateProfile({
           avatar: reader.result,
@@ -80,22 +147,29 @@ export default function AccountPage() {
 
     reader.readAsDataURL(file);
 
-    // 暂时仅本地读取，不发送上传请求
+    // 暂时仅在浏览器内读取，不上传到服务器。
     return false;
   };
+
   if (!user) {
     return (
       <div className={styles.container}>
         <section className={styles.loginPanel}>
           <h1>マイページ</h1>
           <p>ログインしてアカウント情報を確認できます。</p>
-          <Button type="primary" onClick={() => openLogin()}>
+
+          <Button
+            type="primary"
+            onClick={() => openLogin()}
+          >
             ログイン
           </Button>
         </section>
       </div>
     );
   }
+
+  const heading = headings[activeTab];
 
   return (
     <div className={styles.container}>
@@ -119,31 +193,47 @@ export default function AccountPage() {
                 <Avatar
                   size={80}
                   src={user.avatar}
-                  icon={<UserOutlined/>}
+                  icon={<UserOutlined />}
                   className={styles.avatar}
                 />
 
                 <span className={styles.avatarOverlay}>
-      {uploading ? '読込中' : '変更'}
-    </span>
+                  {uploading ? '読込中' : '変更'}
+                </span>
               </button>
             </Upload>
-            <p className={styles.avatarHint}>クリックして画像を変更</p>
-            <h2 className={styles.nickname}>{user.nickname}</h2>
-            <p className={styles.userLabel}>@{user.username}</p>
+
+            <p className={styles.avatarHint}>
+              クリックして画像を変更
+            </p>
+
+            <h2 className={styles.nickname}>
+              {user.nickname}
+            </h2>
+
+            <p className={styles.userLabel}>
+              @{user.username}
+            </p>
           </div>
 
-          <nav className={styles.menu} aria-label="アカウント設定">
+          <nav
+            className={styles.menu}
+            aria-label="マイページメニュー"
+          >
             {settings.map((setting) => (
               <button
                 key={setting.key}
                 type="button"
                 className={`${styles.menuButton} ${
-                  activeTab === setting.key ? styles.active : ''
+                  activeTab === setting.key
+                    ? styles.active
+                    : ''
                 }`}
-                onClick={() => setActiveTab(setting.key)}
+                onClick={() => handleTabChange(setting.key)}
                 aria-current={
-                  activeTab === setting.key ? 'true' : undefined
+                  activeTab === setting.key
+                    ? 'true'
+                    : undefined
                 }
               >
                 {setting.icon}
@@ -153,27 +243,53 @@ export default function AccountPage() {
           </nav>
         </aside>
 
-        <section className={styles.content}>
+        <section
+          className={`${styles.content} ${
+            activeTab === 'messages'
+              ? styles.messageContent
+              : ''
+          }`}
+        >
           <header className={styles.contentHeading}>
-            <h2>
-              {activeTab === 'profile' ? '基本情報' : 'パスワード変更'}
-            </h2>
-            <p>
-              {activeTab === 'profile'
-                ? '表示名や連絡先を変更できます。'
-                : 'アカウントのパスワードを変更します。'}
-            </p>
+            <h2>{heading.title}</h2>
+            <p>{heading.description}</p>
           </header>
 
-          <div className={styles.formArea}>
-            {activeTab === 'profile' ? (
-              <ProfileSettings key={user.id}/>
-            ) : (
-              <PasswordSettings/>
-            )}
+          {activeTab === 'profile' && (
+            <div className={styles.formArea}>
+              <ProfileSettings key={user.id} />
+            </div>
+          )}
+
+          {activeTab === 'password' && (
+            <div className={styles.formArea}>
+              <PasswordSettings />
+            </div>
+          )}
+
+          {/* 保持挂载，切换菜单时保留本地会话状态。 */}
+          <div hidden={activeTab !== 'messages'}>
+            <MessageCenter
+              key={user.id}
+              user={user}
+            />
           </div>
         </section>
       </div>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.container}>
+          読み込み中...
+        </div>
+      }
+    >
+      <AccountContent />
+    </Suspense>
   );
 }
