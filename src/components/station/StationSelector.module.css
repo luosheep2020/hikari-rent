@@ -1,0 +1,19 @@
+.popupSearch {
+  min-width: 280px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.searchHint {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.empty {
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+}

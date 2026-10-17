@@ -3,7 +3,7 @@
 import { App, Button, Form, Input } from 'antd';
 
 import { useAuthStore } from '@/stores/useAuthStore';
-import styles from './ProfileSettings.module.css';
+import styles from './css/ProfileSettings.module.css';
 
 interface ProfileValues {
   nickname: string;

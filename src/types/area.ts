@@ -6,3 +6,12 @@ export interface Area {
   latitude: number | null;
   longitude: number | null;
 }
+
+export interface AreaTreeNode {
+  code: string;
+  name: string;
+  level: number;
+  latitude: number | null;
+  longitude: number | null;
+  children: AreaTreeNode[];
+}

@@ -15,6 +15,7 @@ import { mockRentals } from '@/lib/mockRentals';
 
 import styles from './page.module.css';
 import RentalManagement from "@/components/rental/detail/RentalManagement";
+import RentalHistoryTracker from "@/components/account/RentalHistoryTracker";
 
 interface RentalDetailPageProps {
   params: Promise<{ id: string }>;
@@ -83,8 +84,12 @@ export default async function RentalDetailPage({
         <RentalContract rental={rental} />
         <RentalLocation rental={rental} />
         <RentalDescription rental={rental} />
-      </div>
 
+      </div>
+      <RentalHistoryTracker
+        key={rental.id}
+        rentalId={rental.id}
+      />
       <RentalManagement rental={rental} />
     </div>
   );

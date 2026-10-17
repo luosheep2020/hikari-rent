@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {App, Dropdown, type MenuProps} from 'antd';
 import {usePathname} from 'next/navigation';
 import {useAuthStore} from '@/stores/useAuthStore';
-import {DownOutlined, MessageOutlined} from '@ant-design/icons';
+import {DownOutlined, HistoryOutlined, MessageOutlined} from '@ant-design/icons';
 import {useRouter} from 'next/navigation';
 import {HomeOutlined, HeartOutlined, UserOutlined} from '@ant-design/icons';
 import styles from './Header.module.css';
@@ -39,6 +39,11 @@ export default function Header() {
       icon: <HeartOutlined/>,
     },
     {
+      key: 'history',
+      label: '閲覧履歴',
+      icon: <HistoryOutlined />,
+    },
+    {
       type: 'divider',
     },
     {
@@ -53,7 +58,9 @@ export default function Header() {
       router.push('/account');
     } else if (key === 'messages') {
       router.push('/account?tab=messages');
-    } else if (key === 'favorites') {
+    } else if (key === 'history') {
+      router.push('/account?tab=history');
+    }else if (key === 'favorites') {
       router.push('/favorites');
     } else if (key === 'logout') {
       logout();

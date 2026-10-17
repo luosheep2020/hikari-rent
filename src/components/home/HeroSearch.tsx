@@ -2,32 +2,24 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Select } from 'antd';
+import { Button } from 'antd';
 import {
   EnvironmentFilled,
   SearchOutlined,
 } from '@ant-design/icons';
 
 import styles from './HeroSearch.module.css';
-import AreaSelector from "@/components/area/AreaSelector";
+import AreaSelector from '@/components/area/AreaSelector';
+import StationSelector from '@/components/station/StationSelector';
 
 type SearchMode = 'area' | 'station';
-
-
-
-const stationOptions = [
-  { value: '西新宿五丁目駅', label: '西新宿五丁目駅' },
-  { value: '渋谷駅', label: '渋谷駅' },
-  { value: '中野駅', label: '中野駅' },
-  { value: '吉祥寺駅', label: '吉祥寺駅' },
-];
 
 export default function HeroSearch() {
   const router = useRouter();
 
   const [mode, setMode] = useState<SearchMode>('area');
   const [areaCode, setAreaCode] = useState<string>();
-  const [station, setStation] = useState<string>();
+  const [stationId, setStationId] = useState<string>();
 
   function handleSearch() {
     const params = new URLSearchParams();
@@ -36,8 +28,8 @@ export default function HeroSearch() {
       params.set('areaCode', areaCode);
     }
 
-    if (mode === 'station' && station) {
-      params.set('station', station);
+    if (mode === 'station' && stationId) {
+      params.set('stationId', stationId);
     }
 
     const query = params.toString();
@@ -95,7 +87,11 @@ export default function HeroSearch() {
                 handleSearch();
               }}
             >
-              {mode === 'area' ? (
+              {/* Keep both selectors mounted to preserve loaded branches. */}
+              <div
+                className={styles.selectorField}
+                hidden={mode !== 'area'}
+              >
                 <AreaSelector
                   value={areaCode}
                   onChange={setAreaCode}
@@ -103,21 +99,20 @@ export default function HeroSearch() {
                   className={styles.areaSelect}
                   placeholder="地方・都道府県・市区町村を選択"
                 />
-              ) : (
-                <Select
-                  key="station"
-                  className={styles.areaSelect}
+              </div>
+
+              <div
+                className={styles.selectorField}
+                hidden={mode !== 'station'}
+              >
+                <StationSelector
+                  value={stationId}
+                  onChange={setStationId}
                   size="large"
-                  placeholder="駅を選択（例：渋谷駅・中野駅・吉祥寺駅）"
-                  aria-label="検索する駅"
-                  options={stationOptions}
-                  value={station}
-                  onChange={setStation}
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
+                  className={styles.areaSelect}
+                  placeholder="鉄道会社・路線・駅を選択"
                 />
-              )}
+              </div>
 
               <Button
                 className={styles.searchButton}

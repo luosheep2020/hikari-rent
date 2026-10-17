@@ -13,6 +13,7 @@ import {
   MessageOutlined,
   SettingOutlined,
   UserOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 
 import ProfileSettings from '@/components/account/ProfileSettings';
@@ -22,8 +23,13 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 import styles from './page.module.css';
 import MessageCenter from "@/components/messages/MessageCenter";
+import BrowsingHistory from "@/components/account/BrowsingHistory";
 
-type SettingTab = 'profile' | 'password' | 'messages';
+type SettingTab =
+  | 'profile'
+  | 'password'
+  | 'messages'
+  | 'history';
 
 const settings = [
   {
@@ -35,6 +41,11 @@ const settings = [
     key: 'messages' as const,
     label: 'メッセージ',
     icon: <MessageOutlined />,
+  },
+  {
+    key: 'history' as const,
+    label: '閲覧履歴',
+    icon: <HistoryOutlined />,
   },
   {
     key: 'password' as const,
@@ -54,6 +65,10 @@ const headings: Record<
   messages: {
     title: 'メッセージ',
     description: 'お部屋について、担当者に相談できます。',
+  },
+  history: {
+    title: '閲覧履歴',
+    description: '最近チェックしたお部屋を確認できます。',
   },
   password: {
     title: 'パスワード変更',
@@ -79,7 +94,9 @@ function AccountContent() {
   const tab = searchParams.get('tab');
 
   const activeTab: SettingTab =
-    tab === 'messages' || tab === 'password'
+    tab === 'messages' ||
+    tab === 'password' ||
+    tab === 'history'
       ? tab
       : 'profile';
 
@@ -260,7 +277,9 @@ function AccountContent() {
               <ProfileSettings key={user.id} />
             </div>
           )}
-
+          {activeTab === 'history' && (
+            <BrowsingHistory key={user.id} />
+          )}
           {activeTab === 'password' && (
             <div className={styles.formArea}>
               <PasswordSettings />

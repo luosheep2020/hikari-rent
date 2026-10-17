@@ -5,7 +5,7 @@
   background: #eef3ef;
 }
 
-/* 右侧背景照片 */
+/* Background photo on the right. */
 .hero::before {
   content: '';
   position: absolute;
@@ -16,7 +16,7 @@
   background-position: center;
 }
 
-/* 左侧浅色渐变，让文字保持清晰 */
+/* Light gradient for readable text. */
 .hero::after {
   content: '';
   position: absolute;
@@ -93,8 +93,18 @@
   padding: 16px;
 }
 
-.areaSelect {
+.selectorField {
   flex: 1;
+  min-width: 0;
+}
+
+/* Explicitly hide inactive fields without unmounting the selectors. */
+.selectorField[hidden] {
+  display: none;
+}
+
+.areaSelect {
+  width: 100%;
   min-width: 0;
 }
 
@@ -171,6 +181,7 @@
     flex-direction: column;
   }
 
+  .selectorField,
   .areaSelect,
   .searchButton {
     width: 100%;
