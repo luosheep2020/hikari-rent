@@ -1,13 +1,24 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { App } from 'antd';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import { App, Button, Spin } from 'antd';
 import { APIProvider } from '@vis.gl/react-google-maps';
 
-import type { RentalDetail } from '@/types/rental';
+import { request } from '@/api/client';
+
+import { createDefaultRentalFilters } from '@/types/rentalSearch';
+
 import type {
   MapBounds,
   MapFiltersValue,
+  RentalMapQuery,
+  RentalMapResult,
 } from '@/types/map';
 
 import RentalMap from './RentalMap';
@@ -16,159 +27,370 @@ import MapRentalList from './MapRentalList';
 import RentalPreview from './RentalPreview';
 
 import styles from './css/MapSearch.module.css';
+import {mapApi} from "@/api/map";
 
-interface MapSearchProps {
-  rentals: RentalDetail[];
-}
-
-// 开发阶段的地区中心，之后替换为接口数据
-const areaPositions: Record<string, { lat: number; lng: number }> = {
-  '13104': { lat: 35.694, lng: 139.69 },
-  '13113': { lat: 35.664, lng: 139.699 },
-  '13114': { lat: 35.707, lng: 139.665 },
-  '13203': { lat: 35.704, lng: 139.58 },
+type Position = {
+  lat: number;
+  lng: number;
+  zoom?: number;
 };
 
-function isWithinBounds(
-  rental: RentalDetail,
-  bounds: MapBounds,
-) {
-  const { latitude, longitude } = rental;
+type AreaPositionNode = {
+  code: string;
+  latitude: number | null;
+  longitude: number | null;
+  children?: AreaPositionNode[];
+};
 
-  if (latitude === null || longitude === null) {
+type ResultState = RentalMapResult & {
+  key: string;
+  error?: string;
+};
+
+const JAPAN_BOUNDS: MapBounds = {
+  north: 46,
+  south: 24,
+  east: 146,
+  west: 122,
+};
+
+function findArea(
+  nodes: AreaPositionNode[],
+  code: string,
+): AreaPositionNode | undefined {
+  for (const node of nodes) {
+    if (node.code === code) {
+      return node;
+    }
+
+    if (node.children) {
+      const found = findArea(node.children, code);
+
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeBounds(
+  bounds: MapBounds,
+): MapBounds | null {
+  if (
+    ![
+      bounds.north,
+      bounds.south,
+      bounds.east,
+      bounds.west,
+    ].every(Number.isFinite)
+  ) {
+    return null;
+  }
+
+  const next: MapBounds = {
+    north: Math.min(bounds.north, JAPAN_BOUNDS.north),
+    south: Math.max(bounds.south, JAPAN_BOUNDS.south),
+    east: Math.min(bounds.east, JAPAN_BOUNDS.east),
+    west: Math.max(bounds.west, JAPAN_BOUNDS.west),
+  };
+
+  if (
+    next.north <= next.south ||
+    next.east <= next.west
+  ) {
+    return null;
+  }
+
+  return next;
+}
+
+function boundsEqual(
+  previous: MapBounds | null,
+  next: MapBounds,
+): boolean {
+  if (!previous) {
     return false;
   }
 
-  const latitudeMatches =
-    latitude >= bounds.south && latitude <= bounds.north;
+  const tolerance = 0.000001;
 
-  const longitudeMatches =
-    bounds.west <= bounds.east
-      ? longitude >= bounds.west && longitude <= bounds.east
-      : longitude >= bounds.west || longitude <= bounds.east;
-
-  return latitudeMatches && longitudeMatches;
+  return (
+    Math.abs(previous.north - next.north) < tolerance &&
+    Math.abs(previous.south - next.south) < tolerance &&
+    Math.abs(previous.east - next.east) < tolerance &&
+    Math.abs(previous.west - next.west) < tolerance
+  );
 }
 
-export default function MapSearch({ rentals }: MapSearchProps) {
+export default function MapSearch() {
   const { message } = App.useApp();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [bounds, setBounds] = useState<MapBounds | null>(null);
-  const [filters, setFilters] = useState<MapFiltersValue>({});
+  const [selectedId, setSelectedId] =
+    useState<string | null>(null);
+
+  const [bounds, setBounds] =
+    useState<MapBounds | null>(null);
+
+  const [filters, setFilters] =
+    useState<MapFiltersValue>({});
+
+  const [result, setResult] =
+    useState<ResultState | null>(null);
+
+  const [retry, setRetry] = useState(0);
   const [mapError, setMapError] = useState(false);
   const [locating, setLocating] = useState(false);
 
-  // 每次设置新对象，触发一次地图移动
-  const [panTarget, setPanTarget] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const [panTarget, setPanTarget] =
+    useState<Position | null>(null);
 
-  const [currentPosition, setCurrentPosition] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const [currentPosition, setCurrentPosition] =
+    useState<Position | null>(null);
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  const locatedRentals = rentals.filter(
-    (rental) =>
-      typeof rental.latitude === 'number' &&
-      typeof rental.longitude === 'number' &&
-      Number.isFinite(rental.latitude) &&
-      Number.isFinite(rental.longitude) &&
-      Math.abs(rental.latitude) <= 90 &&
-      Math.abs(rental.longitude) <= 180,
-  );
-
-  const filteredRentals = locatedRentals.filter((rental) => {
-    if (
-      filters.maxRent !== undefined &&
-      rental.monthlyRent > filters.maxRent
-    ) {
-      return false;
+  const query = useMemo<RentalMapQuery | null>(() => {
+    if (!bounds || !apiKey || mapError) {
+      return null;
     }
 
-    if (
-      filters.floorPlan &&
-      rental.floorPlan !== filters.floorPlan
-    ) {
-      return false;
-    }
+    return {
+      ...createDefaultRentalFilters(),
+      ...bounds,
+      areaCode: filters.areaCode,
+      maxRent: filters.maxRent,
+      floorPlans: filters.floorPlan
+        ? [filters.floorPlan]
+        : [],
+      sort: 'recommended',
+    };
+  }, [
+    bounds,
+    apiKey,
+    mapError,
+    filters.areaCode,
+    filters.maxRent,
+    filters.floorPlan,
+  ]);
 
-    return true;
+  const requestKey = JSON.stringify({
+    query,
+    retry,
   });
 
-  const visibleRentals = bounds
-    ? filteredRentals.filter((rental) =>
-      isWithinBounds(rental, bounds),
-    )
-    : filteredRentals;
+  const loading =
+    query !== null &&
+    result?.key !== requestKey;
 
-  const selectedRental = visibleRentals.find(
+  // Keep the previous results visible while refreshing.
+  const rentals = result?.records ?? [];
+  const hasMore = result?.hasMore ?? false;
+
+  const error =
+    result?.key === requestKey
+      ? result.error
+      : undefined;
+
+  const selectedRental = rentals.find(
     (rental) => rental.id === selectedId,
   );
 
-  const activeSelectedId = selectedRental?.id ?? null;
+  const activeSelectedId =
+    selectedRental?.id ?? null;
+
+  // Debounce viewport and filter changes.
+  useEffect(() => {
+    if (!query) {
+      return;
+    }
+
+    const params: RentalMapQuery = query;
+    const controller = new AbortController();
+
+    async function loadRentals(
+      requestParams: RentalMapQuery,
+    ) {
+      try {
+        const data = await mapApi.getRentals(
+          requestParams,
+          controller.signal,
+        );
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setResult({
+          ...data,
+          key: requestKey,
+        });
+
+        setSelectedId((currentId) => {
+          return data.records.some(
+            (rental) => rental.id === currentId,
+          )
+            ? currentId
+            : null;
+        });
+      } catch (cause) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        console.error(
+          'Failed to load map rentals:',
+          cause,
+        );
+
+        setResult({
+          key: requestKey,
+          records: [],
+          hasMore: false,
+          limit: 200,
+          error:
+            '物件を読み込めませんでした。再試行してください。',
+        });
+      }
+    }
+
+    const timer = setTimeout(() => {
+      void loadRentals(params);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, requestKey]);
+
+  // Move the map when the selected area changes.
+  useEffect(() => {
+    const areaCode = filters.areaCode;
+
+    if (!areaCode || !apiKey || mapError) {
+      return;
+    }
+
+    const selectedAreaCode: string = areaCode;
+    const controller = new AbortController();
+
+    async function moveToArea(code: string) {
+      try {
+        const tree = await request<AreaPositionNode[]>(
+          '/api/areas/tree',
+          {
+            signal: controller.signal,
+          },
+        );
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const area = findArea(tree, code);
+
+        if (
+          !area ||
+          typeof area.latitude !== 'number' ||
+          typeof area.longitude !== 'number' ||
+          !Number.isFinite(area.latitude) ||
+          !Number.isFinite(area.longitude)
+        ) {
+          message.info(
+            'このエリアの地図位置は準備中です',
+          );
+          return;
+        }
+
+        setPanTarget({
+          lat: area.latitude,
+          lng: area.longitude,
+        });
+      } catch (cause) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        console.error(
+          'Failed to load area position:',
+          cause,
+        );
+
+        message.warning(
+          'エリアの位置情報を取得できませんでした',
+        );
+      }
+    }
+
+    void moveToArea(selectedAreaCode);
+
+    return () => controller.abort();
+  }, [
+    filters.areaCode,
+    apiKey,
+    mapError,
+    message,
+  ]);
 
   const handleBoundsChange = useCallback(
     (nextBounds: MapBounds) => {
-      setBounds(nextBounds);
+      const normalized = normalizeBounds(nextBounds);
 
-      setSelectedId((currentId) => {
-        const selected = rentals.find(
-          (rental) => rental.id === currentId,
-        );
+      if (!normalized) {
+        return;
+      }
 
-        return selected && isWithinBounds(selected, nextBounds)
-          ? currentId
-          : null;
+      setBounds((previous) => {
+        return boundsEqual(previous, normalized)
+          ? previous
+          : normalized;
       });
     },
-    [rentals],
+    [],
   );
 
   function handleSelect(id: string) {
-    const rental = locatedRentals.find((item) => item.id === id);
+    const rental = rentals.find(
+      (item) => item.id === id,
+    );
 
     if (
       !rental ||
-      rental.latitude === null ||
-      rental.longitude === null
+      typeof rental.latitude !== 'number' ||
+      typeof rental.longitude !== 'number' ||
+      !Number.isFinite(rental.latitude) ||
+      !Number.isFinite(rental.longitude)
     ) {
       return;
     }
 
     setSelectedId(id);
+
     setPanTarget({
       lat: rental.latitude,
       lng: rental.longitude,
     });
   }
 
-  function handleFiltersChange(nextFilters: MapFiltersValue) {
-    const areaChanged = nextFilters.areaCode !== filters.areaCode;
-
+  function handleFiltersChange(
+    nextFilters: MapFiltersValue,
+  ) {
     setFilters(nextFilters);
     setSelectedId(null);
-
-    if (areaChanged && nextFilters.areaCode) {
-      const position = areaPositions[nextFilters.areaCode];
-
-      if (position) {
-        setPanTarget({ ...position });
-      } else {
-        message.info('このエリアの地図位置は準備中です');
-      }
-    }
   }
 
   function handleLocate() {
-    if (locating) return;
+    if (locating) {
+      return;
+    }
 
     if (!navigator.geolocation) {
-      message.warning('このブラウザは位置情報に対応していません');
+      message.warning(
+        'このブラウザは位置情報に対応していません',
+      );
       return;
     }
 
@@ -180,12 +402,12 @@ export default function MapSearch({ rentals }: MapSearchProps) {
 
         const { latitude, longitude } = coords;
 
-        // 現在の地図制限と同じ矩形範囲。精密な国境判定ではありません。
+        // This rectangle is an approximate service boundary.
         if (
-          latitude < 24 ||
-          latitude > 46 ||
-          longitude < 122 ||
-          longitude > 146
+          latitude < JAPAN_BOUNDS.south ||
+          latitude > JAPAN_BOUNDS.north ||
+          longitude < JAPAN_BOUNDS.west ||
+          longitude > JAPAN_BOUNDS.east
         ) {
           message.info(
             '現在地は地図の対応範囲外です。エリアを選択してください',
@@ -193,29 +415,34 @@ export default function MapSearch({ rentals }: MapSearchProps) {
           return;
         }
 
-        const position = {
+        const position: Position = {
           lat: latitude,
           lng: longitude,
         };
 
         setSelectedId(null);
+
         setFilters((previous) => ({
           ...previous,
           areaCode: undefined,
         }));
 
         setCurrentPosition(position);
-        setPanTarget({ ...position });
+
+        setPanTarget({
+          ...position,
+          zoom: 15,
+        });
 
         message.success('現在地を取得しました');
       },
-      (error) => {
+      (cause) => {
         setLocating(false);
 
         const text =
-          error.code === 1
+          cause.code === 1
             ? '位置情報の利用を許可してください'
-            : error.code === 3
+            : cause.code === 3
               ? '位置情報の取得がタイムアウトしました'
               : '現在地を取得できませんでした';
 
@@ -248,7 +475,7 @@ export default function MapSearch({ rentals }: MapSearchProps) {
     >
       <div className={styles.container}>
         <RentalMap
-          rentals={filteredRentals}
+          rentals={rentals}
           selectedId={activeSelectedId}
           onSelect={handleSelect}
           onBoundsChange={handleBoundsChange}
@@ -264,10 +491,58 @@ export default function MapSearch({ rentals }: MapSearchProps) {
         />
 
         <MapRentalList
-          rentals={visibleRentals}
+          rentals={rentals}
           selectedId={activeSelectedId}
           onSelect={handleSelect}
         />
+
+        {(loading || error || hasMore) && (
+          <div
+            role={error ? 'alert' : 'status'}
+            style={{
+              position: 'absolute',
+              top: 88,
+              right: 24,
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              maxWidth: 'calc(100% - 48px)',
+              padding: '10px 16px',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              background: '#fff',
+              color: 'var(--text)',
+              fontSize: 13,
+              boxShadow:
+                '0 4px 16px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            {loading ? (
+              <>
+                <Spin size="small" />
+                <span>この範囲の物件を検索中...</span>
+              </>
+            ) : error ? (
+              <>
+                <span>{error}</span>
+
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setRetry((value) => value + 1);
+                  }}
+                >
+                  再試行
+                </Button>
+              </>
+            ) : (
+              <span>
+                表示件数が多いため、地図を拡大してください。
+              </span>
+            )}
+          </div>
+        )}
 
         {selectedRental && (
           <RentalPreview

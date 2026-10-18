@@ -5,8 +5,8 @@ import { Button, Cascader } from 'antd';
 
 import {
   getAreaTree,
-  type AreaTreeNode,
 } from '@/api/areas';
+import {AreaTreeNode} from "@/types/area";
 
 interface AreaOption {
   value: string;

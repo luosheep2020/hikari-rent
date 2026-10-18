@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import RentalImage from '@/components/rental/RentalImage';
 import Link from 'next/link';
 import { App, Button } from 'antd';
 import {
@@ -10,14 +10,14 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 
-import type { RentalDetail } from '@/types/rental';
+import type { RentalDetail, RentalListItemData } from '@/types/rental';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFavoriteStore } from '@/stores/useFavoriteStore';
 
 import styles from './css/RentalListItem.module.css';
 
 type Props = {
-  rental: RentalDetail;
+  rental: RentalListItemData | RentalDetail;
 };
 
 const yenFormatter = new Intl.NumberFormat('ja-JP');
@@ -47,7 +47,9 @@ export default function RentalListItem({ rental }: Props) {
   );
 
   const detailHref = `/rentals/${rental.id}`;
-  const imageCount = rental.images.length;
+  const imageCount = 'imageCount' in rental
+    ? rental.imageCount
+    : rental.images.length;
 
   const handleFavorite = () => {
     if (!user) {
@@ -72,7 +74,7 @@ export default function RentalListItem({ rental }: Props) {
         className={styles.photo}
         aria-label={`${rental.name}の詳細を見る`}
       >
-        <Image
+        <RentalImage
           src={rental.image}
           alt={`${rental.name}の室内`}
           fill
@@ -102,8 +104,10 @@ export default function RentalListItem({ rental }: Props) {
           <EnvironmentOutlined aria-hidden="true" />
 
           <span>
-            {rental.station}
-            <strong>徒歩{rental.walkingMinutes}分</strong>
+            {rental.station || '駅情報は準備中です'}
+            {rental.walkingMinutes != null && (
+              <strong>徒歩{rental.walkingMinutes}分</strong>
+            )}
           </span>
         </p>
 
@@ -113,9 +117,13 @@ export default function RentalListItem({ rental }: Props) {
         </p>
 
         <p className={styles.building}>
-          {rental.floor}階 / {rental.totalFloors}階建
+          {rental.floor == null ? '階数不明' : `${rental.floor}階`}
+          {' / '}
+          {rental.totalFloors == null ? '総階数不明' : `${rental.totalFloors}階建`}
           <span aria-hidden="true">・</span>
-          {rental.builtYear}年{rental.builtMonth}月築
+          {rental.builtYear == null
+            ? '築年月不明'
+            : `${rental.builtYear}年${rental.builtMonth == null ? '' : `${rental.builtMonth}月`}築`}
         </p>
 
         <ul
@@ -136,7 +144,7 @@ export default function RentalListItem({ rental }: Props) {
 
         <div className={styles.floorPlanImage}>
           {rental.floorPlanImage ? (
-            <Image
+            <RentalImage
               src={rental.floorPlanImage}
               alt={`${rental.name}の間取り図`}
               fill

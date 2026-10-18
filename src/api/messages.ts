@@ -1,114 +1,49 @@
 import { request } from './client';
 
-/** 会话中的联系人 */
-export interface ConversationContact {
-  id: string;
-  name: string;
-  company: string;
-  avatar: string | null;
-}
+import type {
+  MessageImage,
+  ConversationResponse,
+  ConversationQuery,
+  CursorPage,
+  MessageQuery,
+  MessageResponse,
+  OpenConversationRequest,
+  SendMessageRequest,
+  MarkAsReadRequest,
+} from '@/types/message';
 
-/** 会话关联的房源 */
-export interface ConversationRental {
-  id: string;
-  name: string;
-  image: string;
-  floorPlan: string;
-  area: number;
-  monthlyRent: number;
-}
-
-/** 已上传的图片附件 */
-export interface ChatImage {
-  id: string;
-  url: string;
-  name: string;
-}
-
-/** 后端返回的消息 */
-export interface MessageResponse {
-  id: string;
-  conversationId: string;
-  senderId: string;
-
-  /** 客户端生成，后端原样返回，用于去重和匹配 */
-  clientMessageId: string;
-
-  text: string;
-  images: ChatImage[];
-  createdAt: string;
-}
-
-/** 会话列表中的最近消息 */
-export interface LastMessage {
-  id: string;
-  senderId: string;
-  text: string;
-  imageCount: number;
-  createdAt: string;
-}
-
-/** 会话信息 */
-export interface ConversationResponse {
-  id: string;
-  contact: ConversationContact;
-  rental: ConversationRental;
-  lastMessage: LastMessage | null;
-  unreadCount: number;
-}
-
-/** 通用游标分页结果 */
-export interface CursorPage<T> {
-  items: T[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
-/** 会话列表参数 */
-export interface ConversationQuery {
-  cursor?: string;
-  limit?: number;
-}
-
-/** 聊天记录参数 */
-export interface MessageQuery {
-  /** 获取此消息之前的记录，首次加载不传 */
-  beforeId?: string;
-  limit?: number;
-}
-
-/** 发起咨询 */
-export interface OpenConversationRequest {
-  rentalId: string;
-}
-
-/** 发送消息 */
-export interface SendMessageRequest {
-  clientMessageId: string;
-  text: string;
-  attachmentIds: string[];
-}
-
-/** 更新已读位置 */
-export interface MarkAsReadRequest {
-  lastReadMessageId: string;
-}
+// Preserve existing type imports while callers migrate to the types module.
+export type {
+  ConversationContact,
+  ConversationRental,
+  MessageResponse,
+  LastMessage,
+  ConversationResponse,
+  CursorPage,
+  ConversationQuery,
+  MessageQuery,
+  OpenConversationRequest,
+  SendMessageRequest,
+  MarkAsReadRequest,
+  ChatImage,
+} from '@/types/message';
 
 function encodeId(id: string): string {
   return encodeURIComponent(id);
 }
 
+const MESSAGES_PATH = '/api/messages';
+const SESSIONS_PATH = `${MESSAGES_PATH}/sessions`;
+const IMAGES_PATH = `${MESSAGES_PATH}/images`;
+
 export const messagesApi = {
-  /**
-   * 获取会话列表。
-   * 后端按最近消息时间倒序返回。
-   */
+  /** List conversations in descending order of recent activity. */
   getConversations(
     params: ConversationQuery = {},
     signal?: AbortSignal,
   ): Promise<CursorPage<ConversationResponse>> {
     return request<CursorPage<ConversationResponse>>(
-      '/api/conversations',
+      SESSIONS_PATH,
       {
         query: {
           cursor: params.cursor,
@@ -119,16 +54,13 @@ export const messagesApi = {
     );
   },
 
-  /**
-   * 根据房源发起咨询。
-   * 后端寻找担当者，并创建或复用已有会话。
-   */
+  /** Create or reuse a conversation with the property agent. */
   openConversation(
     values: OpenConversationRequest,
     signal?: AbortSignal,
   ): Promise<ConversationResponse> {
     return request<ConversationResponse>(
-      '/api/conversations',
+      SESSIONS_PATH,
       {
         method: 'POST',
         body: values,
@@ -137,18 +69,14 @@ export const messagesApi = {
     );
   },
 
-  /**
-   * 获取聊天记录。
-   * 约定每批 items 按时间从早到晚排列。
-   * nextCursor 用作下一次请求的 beforeId。
-   */
+  /** Load messages in chronological order; use nextCursor as beforeId. */
   getMessages(
     conversationId: string,
     params: MessageQuery = {},
     signal?: AbortSignal,
   ): Promise<CursorPage<MessageResponse>> {
     return request<CursorPage<MessageResponse>>(
-      `/api/conversations/${encodeId(conversationId)}/messages`,
+      `${SESSIONS_PATH}/${encodeId(conversationId)}/records`,
       {
         query: {
           beforeId: params.beforeId,
@@ -159,10 +87,7 @@ export const messagesApi = {
     );
   },
 
-  /**
-   * 发送文字、Emoji 或图片。
-   * 图片需要先上传，传入附件 ID。
-   */
+  /** Send text, emoji, or previously uploaded image attachments. */
   sendMessage(
     conversationId: string,
     values: SendMessageRequest,
@@ -189,7 +114,7 @@ export const messagesApi = {
     }
 
     return request<MessageResponse>(
-      `/api/conversations/${encodeId(conversationId)}/messages`,
+      `${SESSIONS_PATH}/${encodeId(conversationId)}/records`,
       {
         method: 'POST',
         body: {
@@ -202,17 +127,14 @@ export const messagesApi = {
     );
   },
 
-  /**
-   * 标记已读到指定消息。
-   * 后端应保证已读位置只前进，不倒退。
-   */
+  /** Advance the read position without moving it backward. */
   markAsRead(
     conversationId: string,
     values: MarkAsReadRequest,
     signal?: AbortSignal,
   ): Promise<void> {
     return request<void>(
-      `/api/conversations/${encodeId(conversationId)}/read`,
+      `${SESSIONS_PATH}/${encodeId(conversationId)}/read`,
       {
         method: 'PUT',
         body: values,
@@ -221,14 +143,11 @@ export const messagesApi = {
     );
   },
 
-  /**
-   * 上传聊天图片。
-   * 前端校验用于交互提示，后端也必须验证文件。
-   */
+  /** Upload a chat image; the backend must also validate the file. */
   uploadImage(
     file: File,
     signal?: AbortSignal,
-  ): Promise<ChatImage> {
+  ): Promise<MessageImage> {
     if (
       !['image/jpeg', 'image/png', 'image/webp'].includes(
         file.type,
@@ -248,7 +167,7 @@ export const messagesApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    return request<ChatImage>('/api/chat/images', {
+    return request<MessageImage>(IMAGES_PATH, {
       method: 'POST',
       body: formData,
       signal,

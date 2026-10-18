@@ -1,5 +1,9 @@
+import {Suspense} from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import {notFound} from 'next/navigation';
+
+import {ApiError} from '@/api/client';
+import {rentalsApi} from '@/api/rentals';
 
 import RentalGallery from '@/components/rental/detail/RentalGallery';
 import RentalPricePanel from '@/components/rental/detail/RentalPricePanel';
@@ -10,27 +14,55 @@ import RentalAmenities from '@/components/rental/detail/RentalAmenities';
 import RentalContract from '@/components/rental/detail/RentalContract';
 import RentalLocation from '@/components/rental/detail/RentalLocation';
 import RentalDescription from '@/components/rental/detail/RentalDescription';
-
-import { mockRentals } from '@/lib/mockRentals';
+import RentalManagement from '@/components/rental/detail/RentalManagement';
+import RentalHistoryTracker from '@/components/account/RentalHistoryTracker';
 
 import styles from './page.module.css';
-import RentalManagement from "@/components/rental/detail/RentalManagement";
-import RentalHistoryTracker from "@/components/account/RentalHistoryTracker";
+import {getPropertyTypeLabel} from "@/utils/rental";
 
 interface RentalDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function RentalDetailPage({
-                                                 params,
-                                               }: RentalDetailPageProps) {
-  const { id } = await params;
+export default function RentalDetailPage({
+                                           params,
+                                         }: RentalDetailPageProps) {
+  return (
+    <Suspense fallback={<div role="status">物件情報を読み込み中...</div>}>
+      <RentalDetailContent params={params}/>
+    </Suspense>
+  );
+}
 
-  const rental = mockRentals.find((item) => item.id === id);
+async function RentalDetailContent({
+                                     params,
+                                   }: RentalDetailPageProps) {
+  const {id} = await params;
 
-  if (!rental) {
+  if (!/^[1-9]\d{0,18}$/.test(id)) {
     notFound();
   }
+
+  const rental = await rentalsApi.getDetail(id).catch(
+    (error: unknown) => {
+      if (error instanceof ApiError && error.status === 404) {
+        notFound();
+      }
+
+      throw error;
+    },
+  );
+
+  const photos = (rental.images ?? []).filter(
+    (url) => typeof url === 'string' && url.trim() !== '',
+  );
+
+  const galleryImages =
+    photos.length > 0
+      ? photos
+      : rental.image
+        ? [rental.image]
+        : ['/images/rentals/placeholder.svg'];
 
   return (
     <div className={styles.container}>
@@ -49,48 +81,65 @@ export default async function RentalDetailPage({
 
       <header className={styles.heading}>
         <h1 className={styles.title}>{rental.name}</h1>
-
+        <span className={styles.propertyType}>
+          {getPropertyTypeLabel(rental.propertyType)}
+        </span>
         <div className={styles.location}>
           <span>{rental.address}</span>
+
           <span>
-            {rental.station} 徒歩{rental.walkingMinutes}分
+            {rental.station ? (
+              <>
+                {rental.station}
+                {rental.walkingMinutes != null && (
+                  <> 徒歩{rental.walkingMinutes}分</>
+                )}
+              </>
+            ) : (
+              '最寄り駅情報は準備中です'
+            )}
           </span>
         </div>
       </header>
 
-      {/* 顶部：左侧图库，右侧租金和联系人 */}
+      {/* Property photos, pricing, and contact information. */}
       <div className={styles.topGrid}>
         <RentalGallery
           key={rental.id}
-          images={rental.images}
+          images={galleryImages}
           name={rental.name}
         />
 
         <div className={styles.sidebar}>
-          <RentalPricePanel rental={rental} />
+          <RentalPricePanel rental={rental}/>
 
-          <RentalContact
-            key={rental.id}
-            rental={rental}
-          />
+          {rental.agent && (
+            <RentalContact
+              key={rental.id}
+              rental={rental}
+            />
+          )}
         </div>
       </div>
 
-      {/* 下方：房源详细信息 */}
+      {/* Property detail sections. */}
       <div className={styles.detailsGrid}>
-        <RentalFees rental={rental} />
-        <RentalPropertyInfo rental={rental} />
-        <RentalAmenities rental={rental} />
-        <RentalContract rental={rental} />
-        <RentalLocation rental={rental} />
-        <RentalDescription rental={rental} />
-
+        <RentalFees rental={rental}/>
+        <RentalPropertyInfo rental={rental}/>
+        <RentalAmenities rental={rental}/>
+        <RentalContract rental={rental}/>
+        <RentalLocation rental={rental}/>
+        <RentalDescription rental={rental}/>
       </div>
+
       <RentalHistoryTracker
         key={rental.id}
         rentalId={rental.id}
       />
-      <RentalManagement rental={rental} />
+
+      {rental.managementCompany && (
+        <RentalManagement rental={rental}/>
+      )}
     </div>
   );
 }

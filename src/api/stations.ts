@@ -4,39 +4,51 @@ import type {
   StationTreeNode,
 } from '@/types/station';
 
-export function getStationOperators(
-  signal?: AbortSignal,
-): Promise<StationOption[]> {
-  return request<StationOption[]>(
-    '/api/stations/operators',
-    { signal },
-  );
-}
+const STATIONS_PATH = '/api/stations';
 
-export function getStationLines(
-  operatorCode: string,
-  signal?: AbortSignal,
-): Promise<StationOption[]> {
-  return request<StationOption[]>('/api/stations/lines', {
-    query: { operatorCode },
-    signal,
-  });
-}
+export const stationsApi = {
+  getStationOperators(
+    signal?: AbortSignal,
+  ): Promise<StationOption[]> {
+    return request<StationOption[]>(
+      `${STATIONS_PATH}/operators`,
+      { signal },
+    );
+  },
 
-export function getStationsByLine(
-  lineId: string,
-  signal?: AbortSignal,
-): Promise<StationOption[]> {
-  return request<StationOption[]>('/api/stations/options', {
-    query: { lineId },
-    signal,
-  });
-}
+  getStationLines(
+    operatorCode: string,
+    signal?: AbortSignal,
+  ): Promise<StationOption[]> {
+    return request<StationOption[]>(`${STATIONS_PATH}/lines`, {
+      query: { operatorCode },
+      signal,
+    });
+  },
 
-export function getStationTree(
-  signal?: AbortSignal,
-): Promise<StationTreeNode[]> {
-  return request<StationTreeNode[]>('/api/stations/tree', {
-    signal,
-  });
-}
+  getStationsByLine(
+    lineId: string,
+    signal?: AbortSignal,
+  ): Promise<StationOption[]> {
+    return request<StationOption[]>(`${STATIONS_PATH}/options`, {
+      query: { lineId },
+      signal,
+    });
+  },
+
+  getStationTree(
+    signal?: AbortSignal,
+  ): Promise<StationTreeNode[]> {
+    return request<StationTreeNode[]>(`${STATIONS_PATH}/tree`, {
+      signal,
+    });
+  },
+};
+
+// Keep named exports compatible with existing components.
+export const {
+  getStationOperators,
+  getStationLines,
+  getStationsByLine,
+  getStationTree,
+} = stationsApi;

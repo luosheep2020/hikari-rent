@@ -4,11 +4,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CloseOutlined } from '@ant-design/icons';
 
-import type { RentalDetail } from '@/types/rental';
+
 import styles from './css/MapSearch.module.css';
+import {RentalListItemData} from "@/types/rental";
 
 interface RentalPreviewProps {
-  rental: RentalDetail;
+  rental: RentalListItemData;
   onClose: () => void;
 }
 
@@ -24,7 +25,7 @@ export default function RentalPreview({
     <section className={styles.preview} aria-label="選択した物件">
       <div className={styles.previewImage}>
         <Image
-          src={rental.image}
+          src={rental.image || '/images/rentals/placeholder.svg'}
           alt={`${rental.name}の室内`}
           fill
           sizes="(max-width: 600px) 100vw, 320px"
@@ -55,7 +56,12 @@ export default function RentalPreview({
         </div>
 
         <p className={styles.previewStation}>
-          {rental.station} 徒歩{rental.walkingMinutes}分
+       <span>
+          {rental.station ?? '最寄り駅情報は準備中です'}
+         {rental.walkingMinutes != null && (
+           <> 徒歩{rental.walkingMinutes}分</>
+         )}
+          </span>
         </p>
 
         <div className={styles.previewTags}>

@@ -1,46 +1,20 @@
-import { Select } from 'antd';
 import { EnvironmentOutlined } from '@ant-design/icons';
-
 import AreaSelector from '@/components/area/AreaSelector';
-import type { RentalDetail } from '@/types/rental';
+import StationSelector from '@/components/station/StationSelector';
 import type { RentalSearchFilters } from '@/types/rentalSearch';
-
 import styles from '../css/RentalFilters.module.css';
 
 type Props = {
-  rentals: readonly RentalDetail[];
   areaCode?: string;
-  station?: string;
+  stationId?: string;
   onChange: (values: Partial<RentalSearchFilters>) => void;
 };
 
 export default function RentalAreaFilter({
-                                           rentals,
-                                           areaCode,
-                                           station,
-                                           onChange,
-                                         }: Props) {
-  const areaRentals = areaCode
-    ? rentals.filter((rental) => rental.areaCode === areaCode)
-    : rentals;
-
-  const stationNames = new Set<string>();
-
-  areaRentals.forEach((rental) => {
-    stationNames.add(rental.station);
-
-    rental.stations.forEach((item) => {
-      stationNames.add(item.name);
-    });
-  });
-
-  const stationOptions = [...stationNames]
-    .sort((a, b) => a.localeCompare(b, 'ja'))
-    .map((name) => ({
-      value: name,
-      label: name,
-    }));
-
+  areaCode,
+  stationId,
+  onChange,
+}: Props) {
   return (
     <section className={styles.section}>
       <h3 className={styles.sectionTitle}>
@@ -52,8 +26,10 @@ export default function RentalAreaFilter({
         <AreaSelector
           value={areaCode}
           onChange={(nextAreaCode) => {
+            // Preserve the existing behavior of clearing the station on area changes.
             onChange({
               areaCode: nextAreaCode,
+              stationId: undefined,
               station: undefined,
             });
           }}
@@ -61,17 +37,12 @@ export default function RentalAreaFilter({
           className={styles.control}
         />
 
-        <Select<string>
-          value={station}
-          onChange={(nextStation) => {
-            onChange({ station: nextStation });
+        <StationSelector
+          value={stationId}
+          onChange={(nextStationId) => {
+            onChange({ stationId: nextStationId, station: undefined });
           }}
-          options={stationOptions}
-          placeholder="駅を選択"
-          aria-label="駅を選択"
-          allowClear
-          showSearch
-          notFoundContent="対象の駅がありません"
+          placeholder="鉄道会社・路線・駅名で検索"
           className={styles.control}
         />
       </div>

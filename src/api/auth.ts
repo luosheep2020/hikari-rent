@@ -1,54 +1,41 @@
 import { request } from './client';
+import { userApi } from './user';
 
-export interface AuthUser {
-  id: string;
-  username: string;
-  nickname: string;
-  avatar?: string;
-  email?: string;
-  phone?: string;
-}
+import type {
+  LoginRequest,
+  RegisterRequest,
+} from '@/types/auth';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+import type {
+  AuthUser,
+  UpdateProfileRequest,
+} from '@/types/user';
 
-export interface RegisterRequest {
-  nickname: string;
-  email: string;
-  password: string;
-}
-
-export interface UpdateProfileRequest {
-  nickname: string;
-  email?: string;
-  phone?: string;
-}
+const AUTH_PATH = '/api/auth';
 
 export const authApi = {
   login(values: LoginRequest): Promise<AuthUser> {
-    return request<AuthUser>('/api/auth/login', {
+    return request<AuthUser>(`${AUTH_PATH}/login`, {
       method: 'POST',
       body: values,
     });
   },
 
   register(values: RegisterRequest): Promise<void> {
-    return request<void>('/api/auth/register', {
+    return request<void>(`${AUTH_PATH}/register`, {
       method: 'POST',
       body: values,
     });
   },
 
   getCurrentUser(signal?: AbortSignal): Promise<AuthUser> {
-    return request<AuthUser>('/api/auth/me', {
+    return request<AuthUser>(`${AUTH_PATH}/me`, {
       signal,
     });
   },
 
   logout(): Promise<void> {
-    return request<void>('/api/auth/logout', {
+    return request<void>(`${AUTH_PATH}/logout`, {
       method: 'POST',
     });
   },
@@ -56,9 +43,6 @@ export const authApi = {
   updateProfile(
     values: UpdateProfileRequest,
   ): Promise<AuthUser> {
-    return request<AuthUser>('/api/account/profile', {
-      method: 'PATCH',
-      body: values,
-    });
+    return userApi.updateProfile(values);
   },
 };

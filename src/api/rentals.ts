@@ -1,38 +1,38 @@
 import { request } from './client';
-
+import { userApi } from './user';
 import type { PageResult } from '@/types/api';
 import type {
   RentalDetail,
-  RentalSummary,
+  RentalListItemData,
 } from '@/types/rental';
 import type {
-  RentalSearchFilters,
-  RentalSort,
+  RentalFeatureOption,
+  RentalPageQuery,
 } from '@/types/rentalSearch';
+export type { RentalPageQuery } from '@/types/rentalSearch';
 
-export type RentalPageQuery = RentalSearchFilters & {
-  page: number;
-  pageSize: number;
-  sort: RentalSort;
-};
+const RENTALS_PATH = '/api/rentals';
 
 export const rentalsApi = {
   getPage(
     params: RentalPageQuery,
     signal?: AbortSignal,
-  ): Promise<PageResult<RentalDetail>> {
-    return request<PageResult<RentalDetail>>('/api/rentals', {
+  ): Promise<PageResult<RentalListItemData>> {
+    return request<PageResult<RentalListItemData>>(RENTALS_PATH, {
       query: {
-        keyword: params.keyword,
+        keyword: params.keyword?.trim() || undefined,
         areaCode: params.areaCode,
-        station: params.station,
+        stationId: params.stationId,
+        propertyTypes: params.propertyTypes.map(String),
         minRent: params.minRent,
         maxRent: params.maxRent,
         floorPlans: params.floorPlans,
         maxBuildingAge: params.maxBuildingAge,
         maxWalkingMinutes: params.maxWalkingMinutes,
-        amenities: params.amenities,
-        conditions: params.conditions,
+        featureCodes: [...new Set([
+          ...params.amenities,
+          ...params.conditions,
+        ])],
         page: params.page,
         pageSize: params.pageSize,
         sort: params.sort,
@@ -40,36 +40,29 @@ export const rentalsApi = {
       signal,
     });
   },
-
-  getDetail(
-    id: string,
-    signal?: AbortSignal,
-  ): Promise<RentalDetail> {
-    return request<RentalDetail>(
-      `/api/rentals/${encodeURIComponent(id)}`,
-      { signal },
-    );
-  },
-
-  getFavorites(
-    signal?: AbortSignal,
-  ): Promise<RentalSummary[]> {
-    return request<RentalSummary[]>('/api/account/favorites', {
+  getFeatures(signal?: AbortSignal): Promise<RentalFeatureOption[]> {
+    return request<RentalFeatureOption[]>(`${RENTALS_PATH}/features`, {
       signal,
     });
   },
 
-  addFavorite(rentalId: string): Promise<void> {
-    return request<void>(
-      `/api/account/favorites/${encodeURIComponent(rentalId)}`,
-      { method: 'PUT' },
+  getDetail(id: string, signal?: AbortSignal): Promise<RentalDetail> {
+    return request<RentalDetail>(
+      `${RENTALS_PATH}/${encodeURIComponent(id)}`,
+      { signal },
     );
   },
 
+  // Keep older callers on the same user API endpoints.
+  getFavorites(signal?: AbortSignal): Promise<RentalListItemData[]> {
+    return userApi.getFavorites(signal);
+  },
+
+  addFavorite(rentalId: string): Promise<void> {
+    return userApi.addFavorite(rentalId);
+  },
+
   removeFavorite(rentalId: string): Promise<void> {
-    return request<void>(
-      `/api/account/favorites/${encodeURIComponent(rentalId)}`,
-      { method: 'DELETE' },
-    );
+    return userApi.removeFavorite(rentalId);
   },
 };

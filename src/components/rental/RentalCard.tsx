@@ -1,62 +1,43 @@
 'use client';
 
-import Image from 'next/image';
+import RentalImage from '@/components/rental/RentalImage';
 import Link from 'next/link';
-import { App } from 'antd';
+import {App, Tag} from 'antd';
 import { HeartFilled, HeartOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { RentalSummary } from '@/types/rental';
+import type { RentalSummary, RentalListItemData } from '@/types/rental';
 import { useFavoriteStore } from '@/stores/useFavoriteStore';
 import styles from '@/components/rental/css/RentalCard.module.css';
+import {getPropertyTypeLabel} from "@/utils/rental";
+import {useRentalFavorite} from "@/hooks/useRentalFavorite";
 
 interface RentalCardProps {
-  rental: RentalSummary;
+  rental: RentalSummary | RentalListItemData;
 }
 
 export default function RentalCard({ rental }: RentalCardProps) {
-  const { message } = App.useApp();
 
-  const user = useAuthStore((state) => state.user);
-  const openLogin = useAuthStore((state) => state.openLogin);
+  const {
+    isFavorite,
+    busy,
+    handleFavorite,
+  } = useRentalFavorite(rental.id);
 
-  const isFavorite = useFavoriteStore((state) =>
-    user
-      ? (state.favoritesByUser[user.id]?.includes(rental.id) ?? false)
-      : false,
-  );
-
-  const toggleFavorite = useFavoriteStore(
-    (state) => state.toggleFavorite,
-  );
   const rentText = new Intl.NumberFormat('ja-JP', {
     maximumFractionDigits: 2,
   }).format(rental.monthlyRent / 10000);
 
-  function handleFavorite() {
-    if (!user) {
-      message.info('お気に入りを利用するにはログインしてください');
-      openLogin();
-      return;
-    }
-
-    toggleFavorite(user.id, rental.id);
-
-    message.success(
-      isFavorite
-        ? 'お気に入りから削除しました'
-        : 'お気に入りに追加しました',
-    );
-  }
 
   return (
     <article className={styles.card}>
       <Link
         href={`/rentals/${rental.id}`}
         className={styles.detailLink}
+
         aria-label={`${rental.name}の詳細を見る`}
       >
         <div className={styles.imageWrapper}>
-          <Image
+          <RentalImage
             src={rental.image}
             alt={`${rental.name}の室内`}
             fill
@@ -71,9 +52,8 @@ export default function RentalCard({ rental }: RentalCardProps) {
 
         <div className={styles.content}>
           <p className={styles.address}>{rental.address}</p>
-
+          <Tag>{getPropertyTypeLabel(rental.propertyType)}</Tag>
           <h3 className={styles.name}>{rental.name}</h3>
-
           <p className={styles.price}>
             {rentText}
             <span className={styles.priceUnit}>万円/月</span>
@@ -84,7 +64,8 @@ export default function RentalCard({ rental }: RentalCardProps) {
           </p>
 
           <p className={styles.station}>
-            {rental.station} 徒歩{rental.walkingMinutes}分
+            {rental.station || '駅情報は準備中です'}
+            {rental.walkingMinutes != null && ` 徒歩${rental.walkingMinutes}分`}
           </p>
         </div>
       </Link>
@@ -94,7 +75,11 @@ export default function RentalCard({ rental }: RentalCardProps) {
         className={`${styles.favoriteButton} ${
           isFavorite ? styles.favorited : ''
         }`}
-        onClick={handleFavorite}
+        onClick={() => {
+          void handleFavorite();
+        }}
+        disabled={busy}
+        aria-busy={busy}
         aria-label={
           isFavorite
             ? `${rental.name}をお気に入りから削除`

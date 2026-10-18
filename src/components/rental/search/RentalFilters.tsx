@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { RentalDetail } from '@/types/rental';
 import {
   createDefaultRentalFilters,
   type RentalSearchFilters,
 } from '@/types/rentalSearch';
 
-import RentalAreaFilter from './filters/RentalAreaFilter';
+
 import RentalRentFilter from './filters/RentalRentFilter';
 import RentalPropertyFilter from './filters/RentalPropertyFilter';
-import RentalFeatureFilter from './filters/RentalFeatureFilter';
+
 
 import styles from './css/RentalFilters.module.css';
+import RentalAreaFilter from "@/components/rental/search/filters/RentalAreaFilter";
+import RentalFeatureFilter from "@/components/rental/search/filters/RentalFeatureFilter";
 
 export type RentalConditionFilters = Omit<
   RentalSearchFilters,
@@ -19,7 +20,6 @@ export type RentalConditionFilters = Omit<
 >;
 
 type Props = {
-  rentals: readonly RentalDetail[];
   initialFilters: RentalSearchFilters;
   onSearch: (filters: RentalConditionFilters) => void;
 };
@@ -29,7 +29,8 @@ function getConditions(
 ): RentalConditionFilters {
   return {
     areaCode: filters.areaCode,
-    station: filters.station,
+    stationId: filters.stationId,
+    propertyTypes: [...(filters.propertyTypes ?? [])],
     minRent: filters.minRent,
     maxRent: filters.maxRent,
     floorPlans: [...filters.floorPlans],
@@ -51,7 +52,6 @@ function isValidRentRange(
 }
 
 export default function RentalFilters({
-                                        rentals,
                                         initialFilters,
                                         onSearch,
                                       }: Props) {
@@ -59,7 +59,7 @@ export default function RentalFilters({
     () => getConditions(initialFilters),
   );
 
-  // 保存最新条件，连续修改时也能读取最新值。
+  // Keep the latest draft available during consecutive updates.
   const draftRef = useRef(draft);
 
   const timerRef = useRef<
@@ -100,13 +100,14 @@ export default function RentalFilters({
 
     onSearch({
       ...conditions,
+      propertyTypes: [...conditions.propertyTypes],
       floorPlans: [...conditions.floorPlans],
       amenities: [...conditions.amenities],
       conditions: [...conditions.conditions],
     });
   };
 
-  // 区域、户型、设备等立即查询。
+  // Submit discrete selection changes immediately.
   const handleImmediateChange = (
     values: Partial<RentalConditionFilters>,
   ) => {
@@ -116,7 +117,7 @@ export default function RentalFilters({
     submitConditions(next);
   };
 
-  // 租金输入停止 300ms 后查询。
+  // Submit rent input after 300 ms without changes.
   const handleRentInputChange = (
     values: Partial<RentalConditionFilters>,
   ) => {
@@ -134,7 +135,7 @@ export default function RentalFilters({
     }, 300);
   };
 
-  // 滑块拖动时只更新输入框和滑块。
+  // Update the draft while dragging the slider.
   const handleRentSliding = (
     values: Partial<RentalConditionFilters>,
   ) => {
@@ -142,7 +143,7 @@ export default function RentalFilters({
     updateDraft(values);
   };
 
-  // 滑块松手时查询。
+  // Submit after the slider interaction completes.
   const handleRentSlideComplete = (
     values: Partial<RentalConditionFilters>,
   ) => {
@@ -182,9 +183,8 @@ export default function RentalFilters({
       </div>
 
       <RentalAreaFilter
-        rentals={rentals}
         areaCode={draft.areaCode}
-        station={draft.station}
+        stationId={draft.stationId}
         onChange={handleImmediateChange}
       />
 
@@ -197,12 +197,12 @@ export default function RentalFilters({
       />
 
       <RentalPropertyFilter
+        propertyTypes={draft.propertyTypes}
         floorPlans={draft.floorPlans}
         maxBuildingAge={draft.maxBuildingAge}
         maxWalkingMinutes={draft.maxWalkingMinutes}
         onChange={handleImmediateChange}
       />
-
       <RentalFeatureFilter
         amenities={draft.amenities}
         conditions={draft.conditions}

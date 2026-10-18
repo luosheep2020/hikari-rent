@@ -572,3 +572,32 @@
     justify-self: end;
   }
 }
+.clusterMarker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 52px;
+  height: 52px;
+  padding: 0 10px;
+
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  box-shadow:
+    0 0 0 6px rgba(20, 84, 71, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+
+  cursor: pointer;
+}
+
+.clusterMarker:hover {
+  filter: brightness(1.1);
+}

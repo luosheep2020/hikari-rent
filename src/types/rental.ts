@@ -3,6 +3,7 @@ export interface RentalSummary {
   id: string;
   areaCode: string;
   name: string;
+  propertyType: RentalPropertyType | null;
   address: string;
   image: string;
   monthlyRent: number;
@@ -76,3 +77,34 @@ export interface RentalManagementCompany {
   licenseNumber: string | null;
   email: string | null;
 }
+
+export interface RentalListItemData
+  extends Omit<
+    RentalSummary,
+    'image' | 'station' | 'walkingMinutes'
+  > {
+  image: string | null;
+  station: string | null;
+  walkingMinutes: number | null;
+
+  imageCount: number;
+  floorPlanImage: string | null;
+
+  managementFee: number;
+  depositMonths: number;
+  keyMoneyMonths: number;
+
+  floor: number | null;
+  totalFloors: number | null;
+  builtYear: number | null;
+  builtMonth: number | null;
+
+  latitude: number | null;
+  longitude: number | null;
+
+  stations: RentalStation[];
+  amenities: string[];
+  conditions: string[];
+}
+
+export type RentalPropertyType = 1 | 2 | 3;

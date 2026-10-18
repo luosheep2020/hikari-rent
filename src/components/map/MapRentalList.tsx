@@ -3,11 +3,12 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 
-import type { RentalDetail } from '@/types/rental';
+
 import styles from './css/MapSearch.module.css';
+import {RentalListItemData} from "@/types/rental";
 
 interface MapRentalListProps {
-  rentals: RentalDetail[];
+  rentals: RentalListItemData[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }
@@ -80,7 +81,7 @@ export default function MapRentalList({
               >
                 <div className={styles.listImage}>
                   <Image
-                    src={rental.image}
+                    src={rental.image || '/images/rentals/placeholder.svg'}
                     alt=""
                     fill
                     sizes="110px"
@@ -103,8 +104,12 @@ export default function MapRentalList({
                   </p>
 
                   <p className={styles.listStation}>
-                    {rental.station} 徒歩
-                    {rental.walkingMinutes}分
+                 <span>
+                  {rental.station ?? '最寄り駅情報は準備中です'}
+                   {rental.walkingMinutes != null && (
+                     <> 徒歩{rental.walkingMinutes}分</>
+                   )}
+                  </span>
                   </p>
 
                   <div className={styles.listTags}>

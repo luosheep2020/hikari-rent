@@ -15,3 +15,8 @@ export interface AreaTreeNode {
   longitude: number | null;
   children: AreaTreeNode[];
 }
+
+export interface PopularAreaItem {
+  code: string;
+  name: string;
+}

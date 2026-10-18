@@ -97,19 +97,24 @@ export async function request<T>(
     );
   }, 10000);
 
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
+
   try {
     const response = await fetch(url, {
       method: options.method ?? 'GET',
       headers: {
         Accept: 'application/json',
-        ...(options.body !== undefined
+        ...(options.body !== undefined && !isFormData
           ? { 'Content-Type': 'application/json' }
           : {}),
       },
       body:
         options.body === undefined
           ? undefined
-          : JSON.stringify(options.body),
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
       credentials: 'include',
       cache: 'no-store',
       signal: controller.signal,
@@ -117,7 +122,7 @@ export async function request<T>(
 
     const text = await response.text();
 
-    // 允许删除、退出等接口返回 204。
+    // Allow delete and logout endpoints to return 204.
     if (response.status === 204) {
       return undefined as T;
     }
