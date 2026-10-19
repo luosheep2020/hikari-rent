@@ -19,17 +19,22 @@ import styles from './css/LoginModal.module.css';
 
 type AuthMode = 'login' | 'register';
 
-type LoginValues = {
+interface LoginValues {
   email: string;
   password: string;
-};
+}
 
-type RegisterValues = {
+interface RegisterValues {
   nickname: string;
   email: string;
   password: string;
   confirmPassword: string;
-};
+}
+
+const EMAIL_MAX_LENGTH = 254;
+const NICKNAME_MAX_LENGTH = 20;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 20;
 
 export default function LoginModal() {
   const { message } = App.useApp();
@@ -46,18 +51,14 @@ export default function LoginModal() {
 
   const isLogin = mode === 'login';
 
-  const handleClose = () => {
-    closeLogin();
-  };
-
   const handleAfterClose = () => {
     setMode('login');
     setRegisteredEmail('');
   };
 
   const handleSwitchMode = () => {
-    // 只操作当前已经挂载的表单。
-    if (mode === 'login') {
+    // Reset only the currently mounted form.
+    if (isLogin) {
       loginForm.resetFields();
     } else {
       registerForm.resetFields();
@@ -73,11 +74,13 @@ export default function LoginModal() {
   const handleLogin = (values: LoginValues) => {
     const email = values.email.trim().toLowerCase();
 
-    // 模拟登录，密码不保存到 Zustand。
+    // Demo authentication; never store passwords in Zustand.
     login({
       id: `demo:${email}`,
       username: email,
-      nickname: email.split('@')[0],
+      nickname: email
+        .split('@')[0]
+        .slice(0, NICKNAME_MAX_LENGTH),
       email,
       phone: '',
     });
@@ -91,7 +94,7 @@ export default function LoginModal() {
 
     registerForm.resetFields();
 
-    // 登录表单挂载后通过 initialValues 读取邮箱。
+    // Prefill the login form after it mounts.
     setRegisteredEmail(email);
     setMode('login');
 
@@ -103,7 +106,7 @@ export default function LoginModal() {
   return (
     <Modal
       open={loginOpen}
-      onCancel={handleClose}
+      onCancel={() => closeLogin()}
       afterClose={handleAfterClose}
       destroyOnHidden
       footer={null}
@@ -113,7 +116,9 @@ export default function LoginModal() {
       className={styles.modal}
     >
       <div className={styles.heading}>
-        <span className={styles.brand}>Hikari Rent</span>
+        <span className={styles.brand}>
+          Hikari Rent
+        </span>
 
         <p className={styles.description}>
           {isLogin
@@ -136,6 +141,7 @@ export default function LoginModal() {
           <Form.Item
             name="email"
             label="メールアドレス"
+            normalize={(value: string) => value.trim()}
             rules={[
               {
                 required: true,
@@ -146,6 +152,10 @@ export default function LoginModal() {
                 type: 'email',
                 message: '有効なメールアドレスを入力してください',
               },
+              {
+                max: EMAIL_MAX_LENGTH,
+                message: '254文字以内で入力してください',
+              },
             ]}
           >
             <Input
@@ -154,6 +164,9 @@ export default function LoginModal() {
               placeholder="example@email.com"
               autoComplete="username"
               inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={EMAIL_MAX_LENGTH}
             />
           </Form.Item>
 
@@ -165,13 +178,22 @@ export default function LoginModal() {
                 required: true,
                 message: 'パスワードを入力してください',
               },
+              {
+                min: PASSWORD_MIN_LENGTH,
+                message: '8文字以上で入力してください',
+              },
+              {
+                max: PASSWORD_MAX_LENGTH,
+                message: '20文字以内で入力してください',
+              },
             ]}
           >
             <Input.Password
               size="large"
               prefix={<LockOutlined />}
-              placeholder="パスワードを入力"
+              placeholder="8〜20文字"
               autoComplete="current-password"
+              maxLength={PASSWORD_MAX_LENGTH}
             />
           </Form.Item>
 
@@ -198,6 +220,7 @@ export default function LoginModal() {
           <Form.Item
             name="nickname"
             label="ニックネーム"
+            normalize={(value: string) => value.trim()}
             rules={[
               {
                 required: true,
@@ -205,8 +228,8 @@ export default function LoginModal() {
                 message: 'ニックネームを入力してください',
               },
               {
-                max: 30,
-                message: '30文字以内で入力してください',
+                max: NICKNAME_MAX_LENGTH,
+                message: '20文字以内で入力してください',
               },
             ]}
           >
@@ -215,13 +238,15 @@ export default function LoginModal() {
               prefix={<UserOutlined />}
               placeholder="表示するお名前"
               autoComplete="nickname"
-              maxLength={30}
+              maxLength={NICKNAME_MAX_LENGTH}
+              showCount
             />
           </Form.Item>
 
           <Form.Item
             name="email"
             label="メールアドレス"
+            normalize={(value: string) => value.trim()}
             rules={[
               {
                 required: true,
@@ -232,6 +257,10 @@ export default function LoginModal() {
                 type: 'email',
                 message: '有効なメールアドレスを入力してください',
               },
+              {
+                max: EMAIL_MAX_LENGTH,
+                message: '254文字以内で入力してください',
+              },
             ]}
           >
             <Input
@@ -240,32 +269,37 @@ export default function LoginModal() {
               placeholder="example@email.com"
               autoComplete="email"
               inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={EMAIL_MAX_LENGTH}
             />
           </Form.Item>
 
           <Form.Item
             name="password"
             label="パスワード"
+            extra="8〜20文字で入力してください。"
             rules={[
               {
                 required: true,
                 message: 'パスワードを入力してください',
               },
               {
-                min: 8,
+                min: PASSWORD_MIN_LENGTH,
                 message: '8文字以上で入力してください',
               },
               {
-                max: 72,
-                message: '72文字以内で入力してください',
+                max: PASSWORD_MAX_LENGTH,
+                message: '20文字以内で入力してください',
               },
             ]}
           >
             <Input.Password
               size="large"
               prefix={<LockOutlined />}
-              placeholder="8文字以上"
+              placeholder="8〜20文字"
               autoComplete="new-password"
+              maxLength={PASSWORD_MAX_LENGTH}
             />
           </Form.Item>
 
@@ -277,6 +311,10 @@ export default function LoginModal() {
               {
                 required: true,
                 message: '確認用パスワードを入力してください',
+              },
+              {
+                max: PASSWORD_MAX_LENGTH,
+                message: '20文字以内で入力してください',
               },
               ({ getFieldValue }) => ({
                 validator(_, value: string | undefined) {
@@ -299,6 +337,7 @@ export default function LoginModal() {
               prefix={<LockOutlined />}
               placeholder="もう一度入力"
               autoComplete="new-password"
+              maxLength={PASSWORD_MAX_LENGTH}
             />
           </Form.Item>
 

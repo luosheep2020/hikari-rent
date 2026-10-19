@@ -4,6 +4,7 @@ export interface MessageImage {
   name: string;
 }
 
+// Retained local UI models for any remaining demo consumers.
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'agent';
@@ -12,7 +13,7 @@ export interface ChatMessage {
   createdAt: string;
 }
 
-export interface Conversation {
+export interface MessageSession {
   id: string;
   agent: {
     id?: string;
@@ -31,44 +32,38 @@ export interface Conversation {
 }
 
 export interface MessageDraft {
+  clientMessageId: string;
   text: string;
   images: MessageImage[];
 }
 
-/** Conversation contact. */
-export interface ConversationContact {
+export interface MessageContact {
   id: string;
   name: string;
   company: string;
   avatar: string | null;
 }
 
-/** Property associated with a conversation. */
-export interface ConversationRental {
+export interface MessageRental {
   id: string;
   name: string;
-  image: string;
+  image: string | null;
   floorPlan: string;
   area: number;
   monthlyRent: number;
 }
 
-/** Message returned by the backend. */
 export interface MessageResponse {
   id: string;
-  conversationId: string;
+  sessionId: string;
   senderId: string;
-
-  /** Client-generated ID echoed by the backend for deduplication. */
   clientMessageId: string;
-
   text: string;
   images: MessageImage[];
   createdAt: string;
 }
 
-/** Most recent message in a conversation. */
-export interface LastMessage {
+export interface MessagePreview {
   id: string;
   senderId: string;
   text: string;
@@ -76,51 +71,44 @@ export interface LastMessage {
   createdAt: string;
 }
 
-/** Conversation details. */
-export interface ConversationResponse {
+export interface MessageSessionResponse {
   id: string;
-  contact: ConversationContact;
-  rental: ConversationRental;
-  lastMessage: LastMessage | null;
+  contact: MessageContact;
+  rental: MessageRental | null;
+  lastMessage: MessagePreview | null;
   unreadCount: number;
 }
 
-/** Cursor-based page. */
-export interface CursorPage<T> {
+export interface MessageCursorPage<T> {
   items: T[];
   nextCursor: string | null;
   hasMore: boolean;
 }
 
-/** Conversation query parameters. */
-export interface ConversationQuery {
+export interface MessageSessionQuery {
   cursor?: string;
   limit?: number;
 }
 
-/** Message query parameters. */
 export interface MessageQuery {
-  /** Load messages before this ID; omit it for the first page. */
   beforeId?: string;
   limit?: number;
 }
 
-/** Open a property conversation. */
-export interface OpenConversationRequest {
+export interface OpenMessageSessionRequest {
   rentalId: string;
 }
 
-/** Send a message. */
+export interface MessageSessionCreated {
+  id: string;
+}
+
 export interface SendMessageRequest {
   clientMessageId: string;
   text: string;
   attachmentIds: string[];
 }
 
-/** Update the read position. */
 export interface MarkAsReadRequest {
   lastReadMessageId: string;
 }
-
-// Preserve the previous image type export.
-export type ChatImage = MessageImage;

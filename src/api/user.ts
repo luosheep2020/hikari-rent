@@ -9,6 +9,7 @@ import type {
 import type { RentalListItemData } from '@/types/rental';
 const PROFILE_PATH = '/api/account/profile';
 const FAVORITES_PATH = '/api/user/favorites';
+const HISTORY_PATH = '/api/user/history';
 
 export const userApi = {
   updateProfile(
@@ -47,5 +48,36 @@ export const userApi = {
       `${FAVORITES_PATH}/${encodeURIComponent(rentalId)}`,
       { method: 'DELETE' },
     );
+  },
+  getHistory(
+    signal?: AbortSignal,
+  ): Promise<RentalListItemData[]> {
+    return request<RentalListItemData[]>(HISTORY_PATH, {
+      signal,
+    });
+  },
+
+  recordHistory(rentalId: string): Promise<void> {
+    return request<void>(
+      `${HISTORY_PATH}/${encodeURIComponent(rentalId)}`,
+      {
+        method: 'POST',
+      },
+    );
+  },
+
+  removeHistory(rentalId: string): Promise<void> {
+    return request<void>(
+      `${HISTORY_PATH}/${encodeURIComponent(rentalId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  },
+
+  clearHistory(): Promise<void> {
+    return request<void>(HISTORY_PATH, {
+      method: 'DELETE',
+    });
   },
 };

@@ -2,45 +2,44 @@
 
 import { useEffect, useRef } from 'react';
 
+import { userApi } from '@/api/user';
 import { useAuthStore } from '@/stores/useAuthStore';
-import {
-  getHistoryOwner,
-  hydrateHistory,
-  useHistoryStore,
-} from '@/stores/useHistoryStore';
 
-type Props = {
+interface Props {
   rentalId: string;
-};
+}
 
 export default function RentalHistoryTracker({
                                                rentalId,
                                              }: Props) {
   const userId = useAuthStore((state) => state.user?.id);
-  const owner = getHistoryOwner(userId);
 
   const recordedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const recordKey = `${owner}:${rentalId}`;
+    if (!userId || !rentalId) {
+      recordedRef.current = null;
+      return;
+    }
 
-    void hydrateHistory().then(() => {
-      if (
-        cancelled ||
-        recordedRef.current === recordKey
-      ) {
-        return;
+    const recordKey = JSON.stringify([userId, rentalId]);
+
+    if (recordedRef.current === recordKey) {
+      return;
+    }
+
+    // Avoid duplicate submissions during the current mount.
+    recordedRef.current = recordKey;
+
+    // Keep the write running if the visitor leaves the detail page.
+    void userApi.recordHistory(rentalId).catch((error: unknown) => {
+      if (recordedRef.current === recordKey) {
+        recordedRef.current = null;
       }
 
-      useHistoryStore.getState().addHistory(owner, rentalId);
-      recordedRef.current = recordKey;
+      console.warn('Failed to record browsing history:', error);
     });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [owner, rentalId]);
+  }, [userId, rentalId]);
 
   return null;
 }

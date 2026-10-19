@@ -1,4 +1,7 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
+import { messagesApi } from '@/api/messages';
 import dynamic from 'next/dynamic';
 import { App, Button, Image, Input } from 'antd';
 import {
@@ -33,40 +36,17 @@ const EmojiPicker = dynamic(
 );
 
 type Props = {
-  onSend: (draft: MessageDraft) => void;
+  onSend: (draft: MessageDraft) => Promise<void>;
+  disabled?: boolean;
 };
 
 const MAX_TEXT_LENGTH = 500;
 const MAX_IMAGES = 4;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-function readImage(file: File): Promise<MessageImage> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('画像を読み込めませんでした'));
-        return;
-      }
-
-      resolve({
-        id: crypto.randomUUID(),
-        url: reader.result,
-        name: file.name,
-      });
-    };
-
-    reader.onerror = () => {
-      reject(new Error('画像を読み込めませんでした'));
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function MessageComposer({
                                           onSend,
+                                          disabled = false,
                                         }: Props) {
   const { message } = App.useApp();
 
@@ -74,17 +54,24 @@ export default function MessageComposer({
   const emojiWrapperRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
   const readingRef = useRef(false);
+  const sendingRef = useRef(false);
+  const uploadControllersRef = useRef(new Set<AbortController>());
+  const retryRef = useRef<{ fingerprint: string; id: string } | null>(null);
 
   const [text, setText] = useState('');
   const [images, setImages] = useState<MessageImage[]>([]);
   const [reading, setReading] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const blocked = disabled || sending;
 
   useEffect(() => {
     mountedRef.current = true;
 
     return () => {
       mountedRef.current = false;
+      uploadControllersRef.current.forEach((controller) => controller.abort());
+      uploadControllersRef.current.clear();
     };
   }, []);
 
@@ -128,25 +115,53 @@ export default function MessageComposer({
   }, [emojiOpen]);
 
   const canSend =
-    !reading &&
+    !blocked && !reading &&
     (text.trim().length > 0 || images.length > 0);
 
-  const handleSend = () => {
-    if (!canSend) return;
+  const handleSend = async () => {
+    if (!canSend || sendingRef.current) return;
 
-    onSend({
-      text: text.trim(),
-      images: [...images],
-    });
+    const draftText = text.trim();
+    const fingerprint = JSON.stringify([
+      draftText,
+      images.map((image) => image.id),
+    ]);
 
-    setText('');
-    setImages([]);
-    setEmojiOpen(false);
+    if (retryRef.current?.fingerprint !== fingerprint) {
+      retryRef.current = { fingerprint, id: crypto.randomUUID() };
+    }
+
+    sendingRef.current = true;
+    setSending(true);
+
+    try {
+      await onSend({
+        clientMessageId: retryRef.current.id,
+        text: draftText,
+        images: [...images],
+      });
+
+      if (!mountedRef.current) return;
+      retryRef.current = null;
+      setText('');
+      setImages([]);
+      setEmojiOpen(false);
+    } catch (error: unknown) {
+      if (mountedRef.current) {
+        console.error('Failed to send message:', error);
+        message.error('送信できませんでした。内容を確認して再試行してください。');
+      }
+    } finally {
+      sendingRef.current = false;
+      if (mountedRef.current) setSending(false);
+    }
   };
 
   const handleEmojiClick = (
     emojiData: EmojiClickData,
   ) => {
+    if (blocked) return;
+
     if (
       text.length + emojiData.emoji.length >
       MAX_TEXT_LENGTH
@@ -166,7 +181,7 @@ export default function MessageComposer({
   };
 
   const handleFiles = async (files: File[]) => {
-    if (files.length === 0 || readingRef.current) return;
+    if (files.length === 0 || readingRef.current || blocked) return;
 
     const remaining = MAX_IMAGES - images.length;
 
@@ -214,7 +229,15 @@ export default function MessageComposer({
 
     try {
       const results = await Promise.allSettled(
-        validFiles.map(readImage),
+        validFiles.map(async (file) => {
+          const controller = new AbortController();
+          uploadControllersRef.current.add(controller);
+          try {
+            return await messagesApi.uploadImage(file, controller.signal);
+          } finally {
+            uploadControllersRef.current.delete(controller);
+          }
+        }),
       );
 
       if (!mountedRef.current) return;
@@ -225,7 +248,7 @@ export default function MessageComposer({
         if (result.status === 'fulfilled') {
           loadedImages.push(result.value);
         } else {
-          message.error('画像を読み込めませんでした');
+          message.error('画像をアップロードできませんでした');
         }
       });
 
@@ -266,7 +289,7 @@ export default function MessageComposer({
                 type="button"
                 className={styles.removeImage}
                 aria-label={`${image.name}を削除`}
-                disabled={reading}
+                disabled={reading || blocked}
                 onClick={() => {
                   setImages((current) =>
                     current.filter(
@@ -283,6 +306,7 @@ export default function MessageComposer({
       )}
 
       <Input.TextArea
+        disabled={blocked}
         value={text}
         onChange={(event) => {
           setText(event.target.value);
@@ -299,7 +323,7 @@ export default function MessageComposer({
             event.keyCode !== 229
           ) {
             event.preventDefault();
-            handleSend();
+            void handleSend();
           }
         }}
       />
@@ -315,6 +339,7 @@ export default function MessageComposer({
               className={styles.emojiTrigger}
               aria-label="絵文字を選択"
               aria-expanded={emojiOpen}
+              disabled={blocked}
               onClick={() => {
                 setEmojiOpen((current) => !current);
               }}
@@ -359,7 +384,7 @@ export default function MessageComposer({
             aria-label="画像を追加"
             loading={reading}
             disabled={
-              reading || images.length >= MAX_IMAGES
+              reading || blocked || images.length >= MAX_IMAGES
             }
             onClick={() => {
               setEmojiOpen(false);
@@ -395,8 +420,9 @@ export default function MessageComposer({
         <Button
           type="primary"
           icon={<SendOutlined />}
+          loading={sending}
           disabled={!canSend}
-          onClick={handleSend}
+          onClick={() => { void handleSend(); }}
         >
           送信
         </Button>

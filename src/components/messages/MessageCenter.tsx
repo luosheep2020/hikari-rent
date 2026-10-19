@@ -1,253 +1,300 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Empty } from 'antd';
+import { Alert, App, Button, Empty, Spin } from 'antd';
 
-import { createMockConversations } from '@/lib/mockMessages';
-import { mockRentals } from '@/lib/mockRentals';
-
+import { messagesApi } from '@/api/messages';
 import type {
-  Conversation,
-  MessageDraft,
+  MessageDraft, MessageResponse, MessageSessionResponse,
 } from '@/types/message';
-
-import ConversationList from './ConversationList';
+import MessageSessionList from './MessageSessionList';
 import MessageThread from './MessageThread';
-
 import styles from './css/MessageCenter.module.css';
 
-type Props = {
-  user: {
-    id: string;
-    nickname: string;
-    avatar?: string;
-  };
-};
-
-function isSameAgent(
-  conversation: Conversation,
-  agent: {
-    id: string;
-    name: string;
-    company: string;
-  },
-): boolean {
-  if (conversation.agent.id) {
-    return conversation.agent.id === agent.id;
-  }
-
-  // 兼容还没添加担当者 ID 的旧模拟会话。
-  return (
-    conversation.agent.name === agent.name &&
-    conversation.agent.company === agent.company
-  );
+interface Props {
+  user: { id: string; nickname: string; avatar?: string };
 }
 
-export default function MessageCenter({ user }: Props) {
+interface SessionState {
+  key: string;
+  items: MessageSessionResponse[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  error?: string;
+}
+
+interface RecordState {
+  key: string;
+  items: MessageResponse[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  error?: string;
+}
+
+function uniqueSessions(items: MessageSessionResponse[]) {
+  return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
+function mergeMessages(items: MessageResponse[]): MessageResponse[] {
+  return [...new Map(items.map((item) => [item.id, item])).values()].sort((a, b) => {
+    const difference = Date.parse(a.createdAt) - Date.parse(b.createdAt);
+    if (difference) return difference;
+    if (/^\d+$/.test(a.id) && /^\d+$/.test(b.id)) {
+      return BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt(b.id) ? 1 : 0;
+    }
+    return a.id.localeCompare(b.id);
+  });
+}
+
+// Demo IDs are not database user IDs. The override is for display only.
+function resolveUserId(userId: string): string | null {
+  if (/^[1-9]\d*$/.test(userId)) return userId;
+  if (process.env.NODE_ENV === 'development') {
+    const configured = process.env.NEXT_PUBLIC_DEV_USER_ID;
+    if (configured && /^[1-9]\d*$/.test(configured)) return configured;
+  }
+  return null;
+}
+
+export default function MessageCenter(props: Props) {
+  // Reset all message state when the signed-in frontend user changes.
+  return <MessageCenterContent key={props.user.id} {...props} />;
+}
+
+function MessageCenterContent({ user }: Props) {
+  const { message } = App.useApp();
   const searchParams = useSearchParams();
-
   const rentalId = searchParams.get('rentalId');
+  const requestedSessionId = searchParams.get('sessionId');
+  const routeKey = JSON.stringify([rentalId, requestedSessionId]);
+  const currentUserId = resolveUserId(user.id);
+  const aliveRef = useRef(false);
+  const activeIdRef = useRef<string | null>(null);
+  const sendPendingRef = useRef(false);
+  const moreSessionsRef = useRef(false);
+  const olderMessagesRef = useRef(false);
 
-  const requestedRental = mockRentals.find(
-    (rental) => rental.id === rentalId,
-  );
+  const [refresh, setRefresh] = useState(0);
+  const [messageRefresh, setMessageRefresh] = useState(0);
+  const [opening, setOpening] = useState<{ key: string; id?: string; error?: string }>({ key: '' });
+  const [selection, setSelection] = useState<{ key: string; id: string | null } | null>(null);
+  const [sessions, setSessions] = useState<SessionState>({ key: '', items: [], nextCursor: null, hasMore: false });
+  const [records, setRecords] = useState<RecordState>({ key: '', items: [], nextCursor: null, hasMore: false });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
-  const [conversations, setConversations] = useState(
-    createMockConversations,
-  );
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
+  }, []);
 
-  // 记录用户手动选择，以及选择时的房源参数。
-  // URL 换成另一套房源后，优先打开新房源的担当者。
-  const [selection, setSelection] = useState<{
-    rentalId: string | null;
-    conversationId: string | null;
-  }>({
-    rentalId: null,
-    conversationId: null,
-  });
+  const openingRequired = Boolean(rentalId && !requestedSessionId);
+  const openingPending = openingRequired && opening.key !== JSON.stringify([routeKey, refresh]);
+  const openingError = openingRequired && !openingPending ? opening.error : undefined;
+  const targetId = requestedSessionId || (openingRequired && !openingPending ? opening.id : null) || null;
+  const listKey = JSON.stringify([user.id, refresh, targetId]);
+  const listReady = sessions.key === listKey;
+  const sessionItems = listReady ? sessions.items : [];
+  const selectedId = selection?.key === routeKey
+    ? selection.id
+    : targetId || sessionItems[0]?.id || null;
+  const selectedSession = sessionItems.find((item) => item.id === selectedId);
+  const recordsKey = JSON.stringify([selectedSession?.id, messageRefresh]);
+  const recordsReady = records.key === recordsKey;
 
-  const existingConversation = requestedRental
-    ? conversations.find((item) =>
-      isSameAgent(item, requestedRental.agent),
-    )
-    : undefined;
+  useEffect(() => { activeIdRef.current = selectedId; }, [selectedId]);
 
-  const requestedConversation: Conversation | undefined =
-    requestedRental
-      ? {
-        id:
-          existingConversation?.id ??
-          `agent:${requestedRental.agent.id}`,
-
-        agent: {
-          id: requestedRental.agent.id,
-          name: requestedRental.agent.name,
-          company: requestedRental.agent.company,
-          avatar: requestedRental.agent.avatar,
-        },
-
-        rental: {
-          id: requestedRental.id,
-          name: requestedRental.name,
-          image: requestedRental.image,
-          summary:
-            `${requestedRental.floorPlan} · ` +
-            `${requestedRental.area}㎡ · ` +
-            `${requestedRental.monthlyRent / 10000}万円`,
-        },
-
-        unread: existingConversation?.unread ?? 0,
-        messages: existingConversation?.messages ?? [],
-      }
-      : undefined;
-
-  // 将 URL 指定的会话合并到列表。
-  // 不在渲染过程中调用 setState。
-  const availableConversations = requestedConversation
-    ? existingConversation
-      ? conversations.map((item) =>
-        item.id === requestedConversation.id
-          ? requestedConversation
-          : item,
-      )
-      : [requestedConversation, ...conversations]
-    : conversations;
-
-  const selectedId =
-    selection.rentalId === rentalId
-      ? selection.conversationId ??
-      requestedConversation?.id ??
-      null
-      : requestedConversation?.id ?? null;
-
-  const selectedConversation =
-    availableConversations.find(
-      (item) => item.id === selectedId,
-    );
-
-  // 正在打开的会话不显示未读标记。
-  const displayedConversations =
-    availableConversations.map((item) =>
-      item.id === selectedId
-        ? { ...item, unread: 0 }
-        : item,
-    );
-
-  const sortedConversations = [
-    ...displayedConversations,
-  ].sort((a, b) => {
-    const aTime = a.messages.at(-1)?.createdAt;
-    const bTime = b.messages.at(-1)?.createdAt;
-
-    return (
-      (bTime ? Date.parse(bTime) : 0) -
-      (aTime ? Date.parse(aTime) : 0)
-    );
-  });
-
-  const handleSelect = (id: string) => {
-    setSelection({
-      rentalId,
-      conversationId: id,
+  useEffect(() => {
+    if (!rentalId || requestedSessionId) return;
+    const controller = new AbortController();
+    const key = JSON.stringify([routeKey, refresh]);
+    void messagesApi.openSession({ rentalId }, controller.signal).then((created) => {
+      if (!controller.signal.aborted) setOpening({ key, id: created.id });
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      console.error('Failed to open message session:', error);
+      setOpening({ key, error: '相談を開始できませんでした。もう一度お試しください。' });
     });
+    return () => controller.abort();
+  }, [rentalId, requestedSessionId, routeKey, refresh]);
 
-    // 保存新会话及其关联房源，并清除未读。
-    setConversations(
-      availableConversations.map((item) =>
-        item.id === id || item.id === selectedId
-          ? { ...item, unread: 0 }
-          : item,
-      ),
-    );
-  };
-
-  const handleSend = (draft: MessageDraft) => {
-    if (!selectedConversation) return;
-
-    const text = draft.text.trim();
-
-    if (!text && draft.images.length === 0) return;
-
-    const newMessage = {
-      id: crypto.randomUUID(),
-      sender: 'user' as const,
-      text,
-      images: [...draft.images],
-      createdAt: new Date().toISOString(),
-    };
-
-    setConversations(
-      availableConversations.map((item) =>
-        item.id === selectedConversation.id
-          ? {
-            ...item,
-            unread: 0,
-            messages: [
-              ...item.messages,
-              newMessage,
-            ],
+  useEffect(() => {
+    if (openingPending || openingError) return;
+    const controller = new AbortController();
+    async function load() {
+      try {
+        let page = await messagesApi.getSessions({}, controller.signal);
+        let items = page.items;
+        const visited = new Set<string>();
+        // Locate a requested existing session even when it is on a later page.
+        while (targetId && !items.some((item) => item.id === targetId) && page.hasMore) {
+          if (!page.nextCursor || visited.has(page.nextCursor)) {
+            throw new Error('Invalid session pagination cursor');
           }
-          : item,
-      ),
-    );
-  };
+          visited.add(page.nextCursor);
+          page = await messagesApi.getSessions({ cursor: page.nextCursor }, controller.signal);
+          items = uniqueSessions([...items, ...page.items]);
+        }
+        if (!controller.signal.aborted) setSessions({
+          key: listKey, items, nextCursor: page.nextCursor, hasMore: page.hasMore,
+        });
+      } catch (error: unknown) {
+        if (controller.signal.aborted) return;
+        console.error('Failed to load message sessions:', error);
+        setSessions({ key: listKey, items: [], nextCursor: null, hasMore: false,
+          error: '会話一覧を読み込めませんでした。' });
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [listKey, targetId, openingPending, openingError]);
 
-  const handleBack = () => {
-    setConversations(
-      availableConversations.map((item) =>
-        item.id === selectedId
-          ? { ...item, unread: 0 }
-          : item,
-      ),
-    );
+  const markRead = useCallback(async (sessionId: string, messageId?: string) => {
+    if (!messageId) return;
+    try {
+      await messagesApi.markAsRead(sessionId, { lastReadMessageId: messageId });
+      if (aliveRef.current) setSessions((state) => ({ ...state,
+        items: state.items.map((item) => item.id === sessionId ? { ...item, unreadCount: 0 } : item),
+      }));
+    } catch (error: unknown) {
+      console.warn('Failed to update the read position:', error);
+    }
+  }, []);
 
-    // 空字符串表示用户主动返回列表，
-    // 与尚未选择的 null 区分。
-    setSelection({
-      rentalId,
-      conversationId: '',
+  const selectedSessionId = selectedSession?.id;
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    const controller = new AbortController();
+    void messagesApi.getMessages(selectedSessionId, {}, controller.signal).then((page) => {
+      if (controller.signal.aborted) return;
+      const items = mergeMessages(page.items);
+      setRecords({ key: recordsKey, items, nextCursor: page.nextCursor, hasMore: page.hasMore });
+      void markRead(selectedSessionId, items.at(-1)?.id);
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      console.error('Failed to load messages:', error);
+      setRecords({ key: recordsKey, items: [], nextCursor: null, hasMore: false,
+        error: 'メッセージを読み込めませんでした。' });
     });
-  };
+    return () => controller.abort();
+  }, [selectedSessionId, recordsKey, markRead]);
+
+  async function loadMoreSessions() {
+    if (!listReady || !sessions.hasMore || !sessions.nextCursor || moreSessionsRef.current) return;
+    moreSessionsRef.current = true;
+    setLoadingMore(true);
+    const cursor = sessions.nextCursor;
+    try {
+      const page = await messagesApi.getSessions({ cursor });
+      if (!aliveRef.current) return;
+      setSessions((state) => state.key !== listKey ? state : ({
+        ...state, items: uniqueSessions([...state.items, ...page.items]),
+        nextCursor: page.nextCursor, hasMore: page.hasMore && page.nextCursor !== cursor,
+      }));
+    } catch (error: unknown) {
+      console.error('Failed to load more message sessions:', error);
+      if (aliveRef.current) message.error('会話を読み込めませんでした');
+    } finally {
+      moreSessionsRef.current = false;
+      if (aliveRef.current) setLoadingMore(false);
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!selectedSessionId || !recordsReady || !records.hasMore || !records.nextCursor || olderMessagesRef.current) return;
+    olderMessagesRef.current = true;
+    setLoadingOlder(true);
+    const cursor = records.nextCursor;
+    try {
+      const page = await messagesApi.getMessages(selectedSessionId, { beforeId: cursor });
+      if (!aliveRef.current) return;
+      setRecords((state) => state.key !== recordsKey ? state : ({
+        ...state, items: mergeMessages([...page.items, ...state.items]),
+        nextCursor: page.nextCursor, hasMore: page.hasMore && page.nextCursor !== cursor,
+      }));
+    } catch (error: unknown) {
+      console.error('Failed to load older messages:', error);
+      if (aliveRef.current) message.error('以前のメッセージを読み込めませんでした');
+    } finally {
+      olderMessagesRef.current = false;
+      if (aliveRef.current) setLoadingOlder(false);
+    }
+  }
+
+  async function handleSend(draft: MessageDraft): Promise<void> {
+    if (!selectedSessionId || !currentUserId || sendPendingRef.current) {
+      throw new Error('The message session is not ready');
+    }
+    sendPendingRef.current = true;
+    const sessionId = selectedSessionId;
+    try {
+      const saved = await messagesApi.sendMessage(sessionId, {
+        clientMessageId: draft.clientMessageId,
+        text: draft.text,
+        attachmentIds: draft.images.map((image) => image.id),
+      });
+      if (!aliveRef.current) return;
+      setRecords((state) => state.key !== recordsKey ? state : ({
+        ...state, items: mergeMessages([...state.items, saved]),
+      }));
+      setSessions((state) => {
+        const updated = state.items.find((item) => item.id === sessionId);
+        if (!updated) return state;
+        return { ...state, items: [{ ...updated, lastMessage: {
+          id: saved.id, senderId: saved.senderId, text: saved.text,
+          imageCount: saved.images.length, createdAt: saved.createdAt,
+        } }, ...state.items.filter((item) => item.id !== sessionId)] };
+      });
+      if (activeIdRef.current === sessionId) void markRead(sessionId, saved.id);
+    } finally {
+      sendPendingRef.current = false;
+    }
+  }
+
+  if (openingPending || (!listReady && !openingError)) {
+    return <div className={styles.emptyThread}><Spin /></div>;
+  }
+
+  const pageError = openingError || (listReady ? sessions.error : undefined);
+  if (pageError) {
+    return <Alert type="error" showIcon title={pageError}
+      action={<Button size="small" onClick={() => setRefresh((value) => value + 1)}>再試行</Button>} />;
+  }
 
   return (
-    <div
-      className={`${styles.center} ${
-        selectedConversation
-          ? styles.hasSelection
-          : ''
-      }`}
-    >
-      <ConversationList
-        conversations={sortedConversations}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-      />
-
-      <section
-        className={styles.threadPanel}
-        aria-label="会話"
-      >
-        {selectedConversation ? (
-          <MessageThread
-            key={selectedConversation.id}
-            conversation={selectedConversation}
-            user={user}
-            onSend={handleSend}
-            onBack={handleBack}
-          />
-        ) : (
-          <div className={styles.emptyThread}>
-            <Empty
-              description={
-                rentalId && !requestedRental
-                  ? '対象の物件が見つかりませんでした'
-                  : '担当者を選択して会話を表示'
-              }
-            />
-          </div>
-        )}
-      </section>
-    </div>
+    <>
+      {!currentUserId && <Alert type="info" showIcon title="ログイン情報を確認できません。ログインし直してください。" />}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <Button size="small" onClick={() => {
+          setRefresh((value) => value + 1);
+          setMessageRefresh((value) => value + 1);
+        }}>更新</Button>
+      </div>
+      <div className={`${styles.center} ${selectedSession ? styles.hasSelection : ''}`}>
+        <MessageSessionList sessions={sessionItems} selectedId={selectedId}
+          onSelect={(id) => setSelection({ key: routeKey, id })}
+          hasMore={sessions.hasMore} loadingMore={loadingMore}
+          onLoadMore={() => { void loadMoreSessions(); }} />
+        <section className={styles.threadPanel} aria-label="メッセージ">
+          {selectedSession ? (
+            <MessageThread key={selectedSession.id} session={selectedSession}
+              messages={recordsReady ? records.items : []} user={user}
+              currentUserId={currentUserId} loading={!recordsReady}
+              error={recordsReady ? records.error : undefined}
+              hasMore={recordsReady && records.hasMore} loadingOlder={loadingOlder}
+              onLoadOlder={() => { void loadOlderMessages(); }}
+              onRetry={() => setMessageRefresh((value) => value + 1)}
+              onSend={handleSend}
+              onBack={() => setSelection({ key: routeKey, id: null })} />
+          ) : (
+            <div className={styles.emptyThread}>
+              <Empty description={targetId && !sessionItems.some((item) => item.id === targetId)
+                ? '対象の会話が見つかりませんでした' : '担当者を選択してメッセージを表示'} />
+            </div>
+          )}
+        </section>
+      </div>
+    </>
   );
 }

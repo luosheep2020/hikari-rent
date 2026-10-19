@@ -1,31 +1,16 @@
 import { request } from './client';
 
 import type {
+  MarkAsReadRequest,
+  MessageCursorPage,
   MessageImage,
-  ConversationResponse,
-  ConversationQuery,
-  CursorPage,
   MessageQuery,
   MessageResponse,
-  OpenConversationRequest,
+  MessageSessionCreated,
+  MessageSessionQuery,
+  MessageSessionResponse,
+  OpenMessageSessionRequest,
   SendMessageRequest,
-  MarkAsReadRequest,
-} from '@/types/message';
-
-// Preserve existing type imports while callers migrate to the types module.
-export type {
-  ConversationContact,
-  ConversationRental,
-  MessageResponse,
-  LastMessage,
-  ConversationResponse,
-  CursorPage,
-  ConversationQuery,
-  MessageQuery,
-  OpenConversationRequest,
-  SendMessageRequest,
-  MarkAsReadRequest,
-  ChatImage,
 } from '@/types/message';
 
 function encodeId(id: string): string {
@@ -37,12 +22,12 @@ const SESSIONS_PATH = `${MESSAGES_PATH}/sessions`;
 const IMAGES_PATH = `${MESSAGES_PATH}/images`;
 
 export const messagesApi = {
-  /** List conversations in descending order of recent activity. */
-  getConversations(
-    params: ConversationQuery = {},
+  /** List message sessions in descending order of recent activity. */
+  getSessions(
+    params: MessageSessionQuery = {},
     signal?: AbortSignal,
-  ): Promise<CursorPage<ConversationResponse>> {
-    return request<CursorPage<ConversationResponse>>(
+  ): Promise<MessageCursorPage<MessageSessionResponse>> {
+    return request<MessageCursorPage<MessageSessionResponse>>(
       SESSIONS_PATH,
       {
         query: {
@@ -54,29 +39,26 @@ export const messagesApi = {
     );
   },
 
-  /** Create or reuse a conversation with the property agent. */
-  openConversation(
-    values: OpenConversationRequest,
+  /** Create or reuse a message session with the property agent. */
+  openSession(
+    values: OpenMessageSessionRequest,
     signal?: AbortSignal,
-  ): Promise<ConversationResponse> {
-    return request<ConversationResponse>(
-      SESSIONS_PATH,
-      {
-        method: 'POST',
-        body: values,
-        signal,
-      },
-    );
+  ): Promise<MessageSessionCreated> {
+    return request<MessageSessionCreated>(SESSIONS_PATH, {
+      method: 'POST',
+      body: values,
+      signal,
+    });
   },
 
   /** Load messages in chronological order; use nextCursor as beforeId. */
   getMessages(
-    conversationId: string,
+    sessionId: string,
     params: MessageQuery = {},
     signal?: AbortSignal,
-  ): Promise<CursorPage<MessageResponse>> {
-    return request<CursorPage<MessageResponse>>(
-      `${SESSIONS_PATH}/${encodeId(conversationId)}/records`,
+  ): Promise<MessageCursorPage<MessageResponse>> {
+    return request<MessageCursorPage<MessageResponse>>(
+      `${SESSIONS_PATH}/${encodeId(sessionId)}/records`,
       {
         query: {
           beforeId: params.beforeId,
@@ -89,7 +71,7 @@ export const messagesApi = {
 
   /** Send text, emoji, or previously uploaded image attachments. */
   sendMessage(
-    conversationId: string,
+    sessionId: string,
     values: SendMessageRequest,
     signal?: AbortSignal,
   ): Promise<MessageResponse> {
@@ -97,24 +79,24 @@ export const messagesApi = {
 
     if (!text && values.attachmentIds.length === 0) {
       return Promise.reject(
-        new Error('请输入文字或选择图片'),
+        new Error('メッセージを入力するか、画像を選択してください'),
       );
     }
 
     if (text.length > 500) {
       return Promise.reject(
-        new Error('消息不能超过500个字符'),
+        new Error('メッセージは500文字以内にしてください'),
       );
     }
 
     if (values.attachmentIds.length > 4) {
       return Promise.reject(
-        new Error('每条消息最多发送4张图片'),
+        new Error('画像は4枚まで送信できます'),
       );
     }
 
     return request<MessageResponse>(
-      `${SESSIONS_PATH}/${encodeId(conversationId)}/records`,
+      `${SESSIONS_PATH}/${encodeId(sessionId)}/records`,
       {
         method: 'POST',
         body: {
@@ -129,12 +111,12 @@ export const messagesApi = {
 
   /** Advance the read position without moving it backward. */
   markAsRead(
-    conversationId: string,
+    sessionId: string,
     values: MarkAsReadRequest,
     signal?: AbortSignal,
   ): Promise<void> {
     return request<void>(
-      `${SESSIONS_PATH}/${encodeId(conversationId)}/read`,
+      `${SESSIONS_PATH}/${encodeId(sessionId)}/read`,
       {
         method: 'PUT',
         body: values,
@@ -154,13 +136,13 @@ export const messagesApi = {
       )
     ) {
       return Promise.reject(
-        new Error('请选择 JPEG、PNG 或 WebP 图片'),
+        new Error('JPEG・PNG・WebPの画像を選択してください'),
       );
     }
 
     if (file.size > 5 * 1024 * 1024) {
       return Promise.reject(
-        new Error('图片不能超过5MB'),
+        new Error('画像は5MB以下にしてください'),
       );
     }
 
