@@ -1,10 +1,10 @@
-import type { ApiResponse } from '@/types/api';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 type QueryValue =
   | string
   | number
   | boolean
-  | readonly string[]
+  | readonly (string | number)[]
   | undefined
   | null;
 
@@ -13,6 +13,13 @@ type RequestOptions = {
   query?: Record<string, QueryValue>;
   body?: unknown;
   signal?: AbortSignal;
+  auth?: 'none' | 'optional' | 'required';
+};
+
+type ApiEnvelope = {
+  code: number;
+  message: string;
+  data: unknown;
 };
 
 export class ApiError extends Error {
@@ -28,14 +35,15 @@ export class ApiError extends Error {
 
 function isApiResponse(
   value: unknown,
-): value is ApiResponse<unknown> {
+): value is ApiEnvelope {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'code' in value &&
-    typeof value.code === 'number' &&
-    'message' in value &&
-    typeof value.message === 'string'
+    typeof value === 'object'
+    && value !== null
+    && 'code' in value
+    && typeof value.code === 'number'
+    && 'message' in value
+    && typeof value.message === 'string'
+    && 'data' in value
   );
 }
 
@@ -46,35 +54,80 @@ function buildUrl(
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (!baseUrl) {
-    throw new Error('未配置 NEXT_PUBLIC_API_BASE_URL');
+    throw new Error(
+      'NEXT_PUBLIC_API_BASE_URL is missing',
+    );
   }
 
   const url = new URL(
-    `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`,
+    `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`,
   );
 
-  Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') {
-      return;
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (
+      value === undefined
+      || value === null
+      || value === ''
+    ) {
+      continue;
     }
 
     if (Array.isArray(value)) {
-      value.forEach((item) => {
-        url.searchParams.append(key, item);
-      });
-      return;
+      for (const item of value) {
+        url.searchParams.append(key, String(item));
+      }
+    } else {
+      url.searchParams.set(key, String(value));
     }
-
-    url.searchParams.set(key, String(value));
-  });
+  }
 
   return url.toString();
+}
+
+function getAccessToken(): string | null {
+  // Browser storage is unavailable in Server Components.
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const state = useAuthStore.getState();
+
+  if (!state.accessToken) {
+    return null;
+  }
+
+  const expiresAt = state.expiresAt
+    ? Date.parse(state.expiresAt)
+    : Number.NaN;
+
+  if (
+    !Number.isFinite(expiresAt)
+    || expiresAt <= Date.now()
+  ) {
+    state.clearSession();
+    return null;
+  }
+
+  return state.accessToken;
 }
 
 export async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
+  const auth = options.auth ?? 'optional';
+
+  const token = auth === 'none'
+    ? null
+    : getAccessToken();
+
+  if (auth === 'required' && !token) {
+    throw new ApiError(
+      'ログインしてください',
+      401,
+    );
+  }
+
   const url = buildUrl(path, options.query);
 
   const controller = new AbortController();
@@ -86,56 +139,82 @@ export async function request<T>(
   if (options.signal?.aborted) {
     handleAbort();
   } else {
-    options.signal?.addEventListener('abort', handleAbort, {
-      once: true,
-    });
+    options.signal?.addEventListener(
+      'abort',
+      handleAbort,
+      { once: true },
+    );
   }
 
   const timeoutId = setTimeout(() => {
     controller.abort(
-      new DOMException('请求超时', 'TimeoutError'),
+      new DOMException(
+        'Request timed out',
+        'TimeoutError',
+      ),
     );
   }, 10000);
 
   const isFormData =
-    typeof FormData !== 'undefined' && options.body instanceof FormData;
+    typeof FormData !== 'undefined'
+    && options.body instanceof FormData;
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (
+    options.body !== undefined
+    && !isFormData
+  ) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   try {
     const response = await fetch(url, {
       method: options.method ?? 'GET',
-      headers: {
-        Accept: 'application/json',
-        ...(options.body !== undefined && !isFormData
-          ? { 'Content-Type': 'application/json' }
-          : {}),
-      },
+      headers,
+
       body:
         options.body === undefined
           ? undefined
           : isFormData
-            ? (options.body as FormData)
+            ? options.body as FormData
             : JSON.stringify(options.body),
-      credentials: 'include',
+
+      credentials: 'omit',
       cache: 'no-store',
       signal: controller.signal,
     });
 
-    const text = await response.text();
+    // A stale request must not clear a newer login.
+    if (
+      response.status === 401
+      && token
+      && useAuthStore.getState().accessToken === token
+    ) {
+      useAuthStore.getState().clearSession();
+    }
 
-    // Allow delete and logout endpoints to return 204.
     if (response.status === 204) {
       return undefined as T;
     }
 
+    const text = await response.text();
+
     let payload: unknown;
 
     try {
-      payload = text ? JSON.parse(text) : undefined;
+      payload = text
+        ? JSON.parse(text)
+        : undefined;
     } catch {
       throw new ApiError(
-        response.ok
-          ? '后端返回了无效的 JSON'
-          : `请求失败（HTTP ${response.status}）`,
+        `Invalid API response (HTTP ${response.status})`,
         response.status,
       );
     }
@@ -144,30 +223,37 @@ export async function request<T>(
       throw new ApiError(
         isApiResponse(payload)
           ? payload.message
-          : `请求失败（HTTP ${response.status}）`,
+          : `HTTP ${response.status}`,
         response.status,
-        isApiResponse(payload) ? payload.code : undefined,
+        isApiResponse(payload)
+          ? payload.code
+          : undefined,
       );
     }
 
     if (!isApiResponse(payload)) {
       throw new ApiError(
-        '后端返回格式不符合 ApiResponse',
+        'Invalid ApiResponse envelope',
         response.status,
       );
     }
 
     if (payload.code !== 0) {
       throw new ApiError(
-        payload.message || '请求失败',
+        payload.message || 'Request failed',
         response.status,
         payload.code,
       );
     }
 
     return payload.data as T;
+
   } finally {
     clearTimeout(timeoutId);
-    options.signal?.removeEventListener('abort', handleAbort);
+
+    options.signal?.removeEventListener(
+      'abort',
+      handleAbort,
+    );
   }
 }

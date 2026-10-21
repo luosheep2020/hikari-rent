@@ -7,8 +7,16 @@ export interface AuthUser {
   phone?: string;
 }
 
+
 export interface UpdateProfileRequest {
+  nickname?: string;
+  avatarFileId?: string;
+  removeAvatar?: boolean;
+}
+
+export interface UserProfileResponse {
+  id: string;
   nickname: string;
-  email?: string;
-  phone?: string;
+  avatar: string | null;
+  avatarFileId: string | null;
 }

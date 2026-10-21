@@ -1,48 +1,55 @@
-import { request } from './client';
-import { userApi } from './user';
-
-import type {
-  LoginRequest,
-  RegisterRequest,
-} from '@/types/auth';
+import { request } from '@/api/client';
 
 import type {
   AuthUser,
-  UpdateProfileRequest,
-} from '@/types/user';
-
-const AUTH_PATH = '/api/auth';
+  LoginRequest,
+  LoginResponse, RegisterRequest,
+} from '@/types/auth';
 
 export const authApi = {
-  login(values: LoginRequest): Promise<AuthUser> {
-    return request<AuthUser>(`${AUTH_PATH}/login`, {
+  login(
+    data: LoginRequest,
+    signal?: AbortSignal,
+  ): Promise<LoginResponse> {
+    return request<LoginResponse>('/api/auth/login', {
       method: 'POST',
-      body: values,
-    });
-  },
-
-  register(values: RegisterRequest): Promise<void> {
-    return request<void>(`${AUTH_PATH}/register`, {
-      method: 'POST',
-      body: values,
-    });
-  },
-
-  getCurrentUser(signal?: AbortSignal): Promise<AuthUser> {
-    return request<AuthUser>(`${AUTH_PATH}/me`, {
+      body: data,
       signal,
+      auth: 'none',
     });
   },
 
-  logout(): Promise<void> {
-    return request<void>(`${AUTH_PATH}/logout`, {
-      method: 'POST',
-    });
-  },
-
-  updateProfile(
-    values: UpdateProfileRequest,
+  getCurrentUser(
+    signal?: AbortSignal,
   ): Promise<AuthUser> {
-    return userApi.updateProfile(values);
+    return request<AuthUser>('/api/auth/me', {
+      method: 'GET',
+      signal,
+      auth: 'required',
+    });
+  },
+
+  logout(
+    signal?: AbortSignal,
+  ): Promise<void> {
+    return request<void>('/api/auth/logout', {
+      method: 'POST',
+      signal,
+      auth: 'required',
+    });
+  },
+
+  register(
+    data: RegisterRequest,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    return request<void>('/api/auth/register', {
+      method: 'POST',
+      body: data,
+      signal,
+      auth: 'none',
+    });
   },
 };
+
+

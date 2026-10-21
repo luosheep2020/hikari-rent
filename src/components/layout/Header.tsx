@@ -1,42 +1,114 @@
-"use client";
+'use client';
+
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import {App, Dropdown, type MenuProps} from 'antd';
-import {usePathname} from 'next/navigation';
-import {useAuthStore} from '@/stores/useAuthStore';
-import {DownOutlined, HistoryOutlined, MessageOutlined} from '@ant-design/icons';
-import {useRouter} from 'next/navigation';
-import {HomeOutlined, HeartOutlined, UserOutlined} from '@ant-design/icons';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  App,
+  Dropdown,
+  Popconfirm,
+  type MenuProps,
+} from 'antd';
+import {
+  DownOutlined,
+  HeartOutlined,
+  HistoryOutlined,
+  HomeOutlined,
+  MessageOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+
+import { useAuthStore } from '@/stores/useAuthStore';
+
 import styles from './Header.module.css';
 
 const navigation = [
-  {href: '/rentals', label: 'お部屋探し'},
-  {href: '/map', label: '地図から探す'},
+  {
+    href: '/rentals',
+    label: 'お部屋探し',
+  },
+  {
+    href: '/map',
+    label: '地図から探す',
+  },
 ];
-export default function Header() {
 
+export default function Header() {
   const pathname = usePathname();
-  const isHome = pathname === '/';
   const router = useRouter();
-  const {message} = App.useApp();
-  const user = useAuthStore((state) => state.user);
-  const openLogin = useAuthStore((state) => state.openLogin);
-  const logout = useAuthStore((state) => state.logout);
+  const { message } = App.useApp();
+
+  const isHome = pathname === '/';
+
+  const user = useAuthStore(
+    (state) => state.user,
+  );
+
+  const openLogin = useAuthStore(
+    (state) => state.openLogin,
+  );
+
+  const logout = useAuthStore(
+    (state) => state.logout,
+  );
+
+  const [accountMenuOpen, setAccountMenuOpen] =
+    useState(false);
+
+  const [logoutConfirmOpen, setLogoutConfirmOpen] =
+    useState(false);
+
+  const [loggingOut, setLoggingOut] =
+    useState(false);
+
+  const logoutPendingRef = useRef(false);
+
+  async function handleLogout() {
+    if (logoutPendingRef.current) {
+      return;
+    }
+
+    logoutPendingRef.current = true;
+    setLoggingOut(true);
+
+    try {
+      await logout();
+
+      setLogoutConfirmOpen(false);
+      setAccountMenuOpen(false);
+
+      message.success('ログアウトしました');
+      router.replace('/');
+
+    } catch (error) {
+      message.error(
+        'ログアウトに失敗しました。もう一度お試しください。',
+      );
+
+      // Reject to keep the confirmation open for retry.
+      throw error;
+
+    } finally {
+      logoutPendingRef.current = false;
+      setLoggingOut(false);
+    }
+  }
 
   const accountMenu: MenuProps['items'] = [
     {
       key: 'account',
       label: 'マイページ',
-      icon: <UserOutlined/>,
+      icon: <UserOutlined />,
     },
     {
       key: 'messages',
       label: 'メッセージ',
-      icon: <MessageOutlined/>,
+      icon: <MessageOutlined />,
     },
     {
       key: 'favorites',
       label: 'お気に入り',
-      icon: <HeartOutlined/>,
+      icon: <HeartOutlined />,
     },
     {
       key: 'history',
@@ -53,66 +125,148 @@ export default function Header() {
     },
   ];
 
-  const handleAccountMenuClick: MenuProps['onClick'] = ({key}) => {
+  const handleAccountMenuClick: MenuProps['onClick'] = ({
+                                                          key,
+                                                        }) => {
+    setAccountMenuOpen(false);
+
     if (key === 'account') {
       router.push('/account');
+
     } else if (key === 'messages') {
       router.push('/account?tab=messages');
+
     } else if (key === 'history') {
       router.push('/account?tab=history');
-    }else if (key === 'favorites') {
+
+    } else if (key === 'favorites') {
       router.push('/favorites');
+
     } else if (key === 'logout') {
-      logout();
-      message.success('ログアウトしました');
-      router.replace('/');
+      setLogoutConfirmOpen(true);
     }
   };
-  return <header
-    className={`${styles.header} ${
-      isHome ? styles.homeHeader : ''
-    }`}
-  >
-    <div className={styles.inner}>
-      <Link href="/" className={styles.brand}><HomeOutlined/> Hikari Rent</Link>
-      <span className={styles.tagline}>くらしに、ひかりを。</span>
-      <nav className={styles.navigation} aria-label="メインナビゲーション">
-        {navigation.map(item => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return <Link key={item.href} href={item.href}
-                       className={`${styles.navLink} ${active ? styles.active : ''}`}
-                       aria-current={active ? 'page' : undefined}>{item.label}</Link>;
-        })}
-      </nav>
-      {user ? (
-        <Dropdown
-          menu={{
-            items: accountMenu,
-            onClick: handleAccountMenuClick,
-          }}
-          trigger={['hover', 'click']}
-          placement="bottomRight"
+
+  return (
+    <header
+      className={`${styles.header} ${
+        isHome ? styles.homeHeader : ''
+      }`}
+    >
+      <div className={styles.inner}>
+        <Link
+          href="/"
+          className={styles.brand}
         >
+          <HomeOutlined />
+          Hikari Rent
+        </Link>
+
+        <span className={styles.tagline}>
+          くらしに、ひかりを。
+        </span>
+
+        <nav
+          className={styles.navigation}
+          aria-label="メインナビゲーション"
+        >
+          {navigation.map((item) => {
+            const active =
+              pathname === item.href
+              || pathname.startsWith(`${item.href}/`);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`${styles.navLink} ${
+                  active ? styles.active : ''
+                }`}
+                aria-current={
+                  active ? 'page' : undefined
+                }
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {user ? (
+          <Popconfirm
+            title="ログアウトしますか？"
+            description="再度ご利用いただくにはログインが必要です。"
+            open={logoutConfirmOpen}
+            trigger={[]}
+            placement="bottomRight"
+            okText="ログアウト"
+            cancelText="キャンセル"
+            okButtonProps={{
+              loading: loggingOut,
+            }}
+            cancelButtonProps={{
+              disabled: loggingOut,
+            }}
+            onOpenChange={(open) => {
+              if (!logoutPendingRef.current) {
+                setLogoutConfirmOpen(open);
+              }
+            }}
+            onConfirm={handleLogout}
+            onCancel={() => {
+              if (!logoutPendingRef.current) {
+                setLogoutConfirmOpen(false);
+              }
+            }}
+          >
+            <span className={styles.login}>
+              <Dropdown
+                open={accountMenuOpen}
+                onOpenChange={(open) => {
+                  // Keep the dropdown closed while confirming logout.
+                  if (logoutConfirmOpen) {
+                    return;
+                  }
+
+                  setAccountMenuOpen(open);
+                }}
+                menu={{
+                  items: accountMenu,
+                  onClick: handleAccountMenuClick,
+                }}
+                trigger={['hover', 'click']}
+                placement="bottomRight"
+              >
+                <button
+                  type="button"
+                  className={styles.login}
+                  aria-label="アカウントメニュー"
+                  aria-expanded={accountMenuOpen}
+                  aria-haspopup="menu"
+                  disabled={loggingOut}
+                >
+                  <UserOutlined />
+
+                  <span>マイページ</span>
+
+                  <DownOutlined
+                    className={styles.dropdownArrow}
+                  />
+                </button>
+              </Dropdown>
+            </span>
+          </Popconfirm>
+        ) : (
           <button
             type="button"
             className={styles.login}
-            aria-label="アカウントメニュー"
+            onClick={() => openLogin()}
           >
-            <UserOutlined/>
-            <span>マイページ</span>
-            <DownOutlined className={styles.dropdownArrow}/>
+            <UserOutlined />
+            <span>ログイン</span>
           </button>
-        </Dropdown>
-      ) : (
-        <button
-          type="button"
-          className={styles.login}
-          onClick={() => openLogin()}
-        >
-          <UserOutlined/>
-          <span>ログイン</span>
-        </button>
-      )}
-    </div>
-  </header>;
+        )}
+      </div>
+    </header>
+  );
 }

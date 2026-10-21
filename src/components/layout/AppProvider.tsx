@@ -5,6 +5,7 @@ import jaJP from 'antd/locale/ja_JP';
 
 import LoginModal from '@/components/auth/LoginModal';
 import React from "react";
+import AuthBootstrap from "@/components/auth/AuthBootstrap";
 
 export default function AppProvider({
                                       children,
@@ -57,6 +58,7 @@ export default function AppProvider({
       }}
     >
       <App message={{ duration: 2 }}>
+        <AuthBootstrap />
         {children}
         <LoginModal />
       </App>

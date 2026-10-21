@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   App,
   Button,
@@ -14,99 +14,187 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 
+import { authApi } from '@/api/auth';
+import { ApiError } from '@/api/client';
 import { useAuthStore } from '@/stores/useAuthStore';
+
+import type {
+  LoginRequest,
+  RegisterRequest,
+} from '@/types/auth';
+
 import styles from './css/LoginModal.module.css';
 
 type AuthMode = 'login' | 'register';
-
-interface LoginValues {
-  email: string;
-  password: string;
-}
-
-interface RegisterValues {
-  nickname: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
 
 const EMAIL_MAX_LENGTH = 254;
 const NICKNAME_MAX_LENGTH = 20;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 20;
 
+function getAuthErrorMessage(
+  error: unknown,
+  mode: AuthMode,
+): string {
+  if (!(error instanceof ApiError)) {
+    return '通信に失敗しました。接続を確認して、もう一度お試しください。';
+  }
+
+  switch (error.status) {
+    case 400:
+      return '入力内容を確認してください。';
+
+    case 401:
+      return mode === 'login'
+        ? 'メールアドレスまたはパスワードが正しくありません。'
+        : '登録できませんでした。もう一度お試しください。';
+
+    case 409:
+      return mode === 'register'
+        ? 'このメールアドレスはすでに登録されています。'
+        : '処理を完了できませんでした。もう一度お試しください。';
+
+    case 429:
+      return '試行回数が多すぎます。しばらくしてからお試しください。';
+
+    case 503:
+      return '現在サービスを利用できません。しばらくしてからお試しください。';
+
+    default:
+      return mode === 'login'
+        ? 'ログインに失敗しました。もう一度お試しください。'
+        : '登録に失敗しました。もう一度お試しください。';
+  }
+}
+
 export default function LoginModal() {
   const { message } = App.useApp();
 
-  const loginOpen = useAuthStore((state) => state.loginOpen);
-  const closeLogin = useAuthStore((state) => state.closeLogin);
-  const login = useAuthStore((state) => state.login);
+  const loginOpen = useAuthStore(
+    (state) => state.loginOpen,
+  );
+
+  const closeLogin = useAuthStore(
+    (state) => state.closeLogin,
+  );
+
+  const login = useAuthStore(
+    (state) => state.login,
+  );
 
   const [mode, setMode] = useState<AuthMode>('login');
-  const [registeredEmail, setRegisteredEmail] = useState('');
 
-  const [loginForm] = Form.useForm<LoginValues>();
-  const [registerForm] = Form.useForm<RegisterValues>();
+  const [registeredEmail, setRegisteredEmail] =
+    useState('');
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const submittingRef = useRef(false);
 
   const isLogin = mode === 'login';
 
-  const handleAfterClose = () => {
+  function handleAfterClose() {
     setMode('login');
     setRegisteredEmail('');
-  };
+  }
 
-  const handleSwitchMode = () => {
-    // Reset only the currently mounted form.
-    if (isLogin) {
-      loginForm.resetFields();
-    } else {
-      registerForm.resetFields();
+  function handleClose() {
+    if (submittingRef.current) {
+      return;
+    }
+
+    closeLogin();
+  }
+
+  function handleSwitchMode() {
+    if (submittingRef.current) {
+      return;
     }
 
     setRegisteredEmail('');
 
+    // Switching forms clears their values through unmounting.
     setMode((current) =>
       current === 'login' ? 'register' : 'login',
     );
-  };
+  }
 
-  const handleLogin = (values: LoginValues) => {
-    const email = values.email.trim().toLowerCase();
+  async function handleLogin(values: LoginRequest) {
+    if (submittingRef.current) {
+      return;
+    }
 
-    // Demo authentication; never store passwords in Zustand.
-    login({
-      id: `demo:${email}`,
-      username: email,
-      nickname: email
-        .split('@')[0]
-        .slice(0, NICKNAME_MAX_LENGTH),
-      email,
-      phone: '',
-    });
+    submittingRef.current = true;
+    setSubmitting(true);
 
-    closeLogin();
-    message.success('ログインしました');
-  };
+    try {
+      const result = await authApi.login({
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
+      });
 
-  const handleRegister = (values: RegisterValues) => {
-    const email = values.email.trim().toLowerCase();
+      // Save the authenticated session and close the modal.
+      login(result);
 
-    registerForm.resetFields();
+      message.success('ログインしました');
 
-    // Prefill the login form after it mounts.
-    setRegisteredEmail(email);
-    setMode('login');
+    } catch (error) {
+      message.error(
+        getAuthErrorMessage(error, 'login'),
+      );
 
-    message.success(
-      '登録フォームの確認が完了しました（デモ）。ログインをお試しください。',
-    );
-  };
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRegister(
+    values: RegisterRequest,
+  ) {
+    if (submittingRef.current) {
+      return;
+    }
+
+    submittingRef.current = true;
+    setSubmitting(true);
+
+    const email = values.email
+      .trim()
+      .toLowerCase();
+
+    try {
+      await authApi.register({
+        nickname: values.nickname.trim(),
+        email,
+        password: values.password,
+        confirmPassword: values.confirmPassword,
+      });
+
+      // Prefill only the email; never copy or persist passwords.
+      setRegisteredEmail(email);
+      setMode('login');
+
+      message.success(
+        'アカウントを作成しました。ログインしてください。',
+      );
+
+    } catch (error) {
+      message.error(
+        getAuthErrorMessage(error, 'register'),
+      );
+
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Modal
       open={loginOpen}
-      onCancel={() => closeLogin()}
+      onCancel={handleClose}
       afterClose={handleAfterClose}
       destroyOnHidden
       footer={null}
@@ -114,6 +202,9 @@ export default function LoginModal() {
       centered
       title={isLogin ? 'ログイン' : '新規登録'}
       className={styles.modal}
+      closable={{ disabled: submitting }}
+      keyboard={!submitting}
+      mask={{ closable: !submitting }}
     >
       <div className={styles.heading}>
         <span className={styles.brand}>
@@ -128,13 +219,16 @@ export default function LoginModal() {
       </div>
 
       {isLogin ? (
-        <Form<LoginValues>
+        <Form<LoginRequest>
           key="login"
-          form={loginForm}
-          initialValues={{ email: registeredEmail }}
+          initialValues={{
+            email: registeredEmail,
+          }}
           clearOnDestroy
+          preserve={false}
           layout="vertical"
           requiredMark={false}
+          disabled={submitting}
           onFinish={handleLogin}
           className={styles.form}
         >
@@ -202,18 +296,20 @@ export default function LoginModal() {
             htmlType="submit"
             size="large"
             block
+            loading={submitting}
             className={styles.submitButton}
           >
             ログイン
           </Button>
         </Form>
       ) : (
-        <Form<RegisterValues>
+        <Form<RegisterRequest>
           key="register"
-          form={registerForm}
           clearOnDestroy
+          preserve={false}
           layout="vertical"
           requiredMark={false}
+          disabled={submitting}
           onFinish={handleRegister}
           className={styles.form}
         >
@@ -319,8 +415,8 @@ export default function LoginModal() {
               ({ getFieldValue }) => ({
                 validator(_, value: string | undefined) {
                   if (
-                    !value ||
-                    getFieldValue('password') === value
+                    !value
+                    || getFieldValue('password') === value
                   ) {
                     return Promise.resolve();
                   }
@@ -346,6 +442,7 @@ export default function LoginModal() {
             htmlType="submit"
             size="large"
             block
+            loading={submitting}
             className={styles.submitButton}
           >
             アカウントを作成
@@ -363,15 +460,18 @@ export default function LoginModal() {
         <button
           type="button"
           onClick={handleSwitchMode}
+          disabled={submitting}
           className={styles.switchButton}
         >
           {isLogin ? '新規登録' : 'ログイン'}
         </button>
       </div>
 
-      <p className={styles.demoNote}>
-        現在はデモ版です。アカウントの作成・認証は行われません。
-      </p>
+      {!isLogin && (
+        <p className={styles.demoNote}>
+          登録後はログイン画面からログインしてください。
+        </p>
+      )}
     </Modal>
   );
 }

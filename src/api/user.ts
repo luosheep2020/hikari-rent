@@ -2,24 +2,16 @@
 import { request } from './client';
 
 import type {
-  AuthUser,
-  UpdateProfileRequest,
+
+  UpdateProfileRequest, UserProfileResponse,
 } from '@/types/user';
 
 import type { RentalListItemData } from '@/types/rental';
-const PROFILE_PATH = '/api/account/profile';
 const FAVORITES_PATH = '/api/user/favorites';
 const HISTORY_PATH = '/api/user/history';
 
 export const userApi = {
-  updateProfile(
-    values: UpdateProfileRequest,
-  ): Promise<AuthUser> {
-    return request<AuthUser>(PROFILE_PATH, {
-      method: 'PATCH',
-      body: values,
-    });
-  },
+
 
   getFavorites(
     signal?: AbortSignal,
@@ -80,4 +72,32 @@ export const userApi = {
       method: 'DELETE',
     });
   },
+  getProfile(
+    signal?: AbortSignal,
+  ): Promise<UserProfileResponse> {
+    return request<UserProfileResponse>(
+      '/api/user/account/profile',
+      {
+        method: 'GET',
+        signal,
+        auth: 'required',
+      },
+    );
+  },
+
+  updateProfile(
+    data: UpdateProfileRequest,
+    signal?: AbortSignal,
+  ): Promise<UserProfileResponse> {
+    return request<UserProfileResponse>(
+      '/api/user/account/profile',
+      {
+        method: 'PATCH',
+        body: data,
+        signal,
+        auth: 'required',
+      },
+    );
+  },
+
 };
