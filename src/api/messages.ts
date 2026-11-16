@@ -1,4 +1,4 @@
-import { request } from './client';
+import { request } from "./client";
 
 import type {
   MarkAsReadRequest,
@@ -11,15 +11,14 @@ import type {
   MessageSessionResponse,
   OpenMessageSessionRequest,
   SendMessageRequest,
-} from '@/types/message';
+} from "@/types/message";
 
 function encodeId(id: string): string {
   return encodeURIComponent(id);
 }
 
-const MESSAGES_PATH = '/api/messages';
+const MESSAGES_PATH = "/api/messages";
 const SESSIONS_PATH = `${MESSAGES_PATH}/sessions`;
-const IMAGES_PATH = `${MESSAGES_PATH}/images`;
 
 export const messagesApi = {
   /** List message sessions in descending order of recent activity. */
@@ -27,16 +26,14 @@ export const messagesApi = {
     params: MessageSessionQuery = {},
     signal?: AbortSignal,
   ): Promise<MessageCursorPage<MessageSessionResponse>> {
-    return request<MessageCursorPage<MessageSessionResponse>>(
-      SESSIONS_PATH,
-      {
-        query: {
-          cursor: params.cursor,
-          limit: params.limit ?? 20,
-        },
-        signal,
+    return request<MessageCursorPage<MessageSessionResponse>>(SESSIONS_PATH, {
+      query: {
+        cursor: params.cursor,
+        limit: params.limit ?? 20,
       },
-    );
+      signal,
+      auth: "required",
+    });
   },
 
   /** Create or reuse a message session with the property agent. */
@@ -45,9 +42,10 @@ export const messagesApi = {
     signal?: AbortSignal,
   ): Promise<MessageSessionCreated> {
     return request<MessageSessionCreated>(SESSIONS_PATH, {
-      method: 'POST',
+      method: "POST",
       body: values,
       signal,
+      auth: "required",
     });
   },
 
@@ -65,11 +63,12 @@ export const messagesApi = {
           limit: params.limit ?? 30,
         },
         signal,
+        auth: "required",
       },
     );
   },
 
-  /** Send text, emoji, or previously uploaded image attachments. */
+  /** Send text and emoji using the existing idempotency UUID. */
   sendMessage(
     sessionId: string,
     values: SendMessageRequest,
@@ -79,32 +78,31 @@ export const messagesApi = {
 
     if (!text && values.attachmentIds.length === 0) {
       return Promise.reject(
-        new Error('メッセージを入力するか、画像を選択してください'),
+        new Error("メッセージを入力するか、画像を選択してください"),
       );
     }
 
     if (text.length > 500) {
-      return Promise.reject(
-        new Error('メッセージは500文字以内にしてください'),
-      );
+      return Promise.reject(new Error("メッセージは500文字以内にしてください"));
     }
 
-    if (values.attachmentIds.length > 4) {
+    if (values.attachmentIds.length > 0) {
       return Promise.reject(
-        new Error('画像は4枚まで送信できます'),
+        new Error("画像送信は準備中です。テキスト・絵文字をご利用ください。"),
       );
     }
 
     return request<MessageResponse>(
-      `${SESSIONS_PATH}/${encodeId(sessionId)}/records`,
+      `${MESSAGES_PATH}/send/${encodeId(sessionId)}`,
       {
-        method: 'POST',
+        method: "POST",
         body: {
           clientMessageId: values.clientMessageId,
           text,
           attachmentIds: values.attachmentIds,
         },
         signal,
+        auth: "required",
       },
     );
   },
@@ -115,44 +113,20 @@ export const messagesApi = {
     values: MarkAsReadRequest,
     signal?: AbortSignal,
   ): Promise<void> {
-    return request<void>(
-      `${SESSIONS_PATH}/${encodeId(sessionId)}/read`,
-      {
-        method: 'PUT',
-        body: values,
-        signal,
-      },
-    );
+    return request<void>(`${SESSIONS_PATH}/${encodeId(sessionId)}/read`, {
+      method: "PUT",
+      body: values,
+      signal,
+      auth: "required",
+    });
   },
 
-  /** Upload a chat image; the backend must also validate the file. */
-  uploadImage(
-    file: File,
-    signal?: AbortSignal,
-  ): Promise<MessageImage> {
-    if (
-      !['image/jpeg', 'image/png', 'image/webp'].includes(
-        file.type,
-      )
-    ) {
-      return Promise.reject(
-        new Error('JPEG・PNG・WebPの画像を選択してください'),
-      );
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      return Promise.reject(
-        new Error('画像は5MB以下にしてください'),
-      );
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    return request<MessageImage>(IMAGES_PATH, {
-      method: 'POST',
-      body: formData,
-      signal,
-    });
+  /** Keep this method explicit until private chat attachments are implemented. */
+  uploadImage(_file: File, _signal?: AbortSignal): Promise<MessageImage> {
+    void _file;
+    void _signal;
+    return Promise.reject(
+      new Error("画像送信は準備中です。テキスト・絵文字をご利用ください。"),
+    );
   },
 };

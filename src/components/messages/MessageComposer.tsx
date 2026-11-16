@@ -1,43 +1,30 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { messagesApi } from '@/api/messages';
-import dynamic from 'next/dynamic';
-import { App, Button, Image, Input } from 'antd';
+import { useEffect, useRef, useState } from "react";
+import { messagesApi } from "@/api/messages";
+import dynamic from "next/dynamic";
+import { App, Button, Image, Input } from "antd";
 import {
   CloseOutlined,
   PictureOutlined,
   SendOutlined,
   SmileOutlined,
-} from '@ant-design/icons';
-import {
-  EmojiStyle,
-  Theme,
-  type EmojiClickData,
-} from 'emoji-picker-react';
+} from "@ant-design/icons";
+import { EmojiStyle, Theme, type EmojiClickData } from "emoji-picker-react";
 
-import type {
-  MessageDraft,
-  MessageImage,
-} from '@/types/message';
+import type { MessageDraft, MessageImage } from "@/types/message";
 
-import styles from './css/MessageCenter.module.css';
+import styles from "./css/MessageCenter.module.css";
 
-const EmojiPicker = dynamic(
-  () => import('emoji-picker-react'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className={styles.pickerLoading}>
-        読み込み中...
-      </div>
-    ),
-  },
-);
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
+  ssr: false,
+  loading: () => <div className={styles.pickerLoading}>読み込み中...</div>,
+});
 
 type Props = {
   onSend: (draft: MessageDraft) => Promise<void>;
   disabled?: boolean;
+  imagesEnabled?: boolean;
 };
 
 const MAX_TEXT_LENGTH = 500;
@@ -47,6 +34,7 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 export default function MessageComposer({
                                           onSend,
                                           disabled = false,
+                                          imagesEnabled = false,
                                         }: Props) {
   const { message } = App.useApp();
 
@@ -58,7 +46,7 @@ export default function MessageComposer({
   const uploadControllersRef = useRef(new Set<AbortController>());
   const retryRef = useRef<{ fingerprint: string; id: string } | null>(null);
 
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const [images, setImages] = useState<MessageImage[]>([]);
   const [reading, setReading] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -67,11 +55,12 @@ export default function MessageComposer({
 
   useEffect(() => {
     mountedRef.current = true;
+    const controllers = uploadControllersRef.current;
 
     return () => {
       mountedRef.current = false;
-      uploadControllersRef.current.forEach((controller) => controller.abort());
-      uploadControllersRef.current.clear();
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
     };
   }, []);
 
@@ -91,32 +80,22 @@ export default function MessageComposer({
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setEmojiOpen(false);
       }
     };
 
-    document.addEventListener(
-      'pointerdown',
-      handlePointerDown,
-    );
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener(
-        'pointerdown',
-        handlePointerDown,
-      );
-      document.removeEventListener(
-        'keydown',
-        handleKeyDown,
-      );
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [emojiOpen]);
 
   const canSend =
-    !blocked && !reading &&
-    (text.trim().length > 0 || images.length > 0);
+    !blocked && !reading && (text.trim().length > 0 || images.length > 0);
 
   const handleSend = async () => {
     if (!canSend || sendingRef.current) return;
@@ -143,13 +122,15 @@ export default function MessageComposer({
 
       if (!mountedRef.current) return;
       retryRef.current = null;
-      setText('');
+      setText("");
       setImages([]);
       setEmojiOpen(false);
     } catch (error: unknown) {
       if (mountedRef.current) {
-        console.error('Failed to send message:', error);
-        message.error('送信できませんでした。内容を確認して再試行してください。');
+        console.error("Failed to send message:", error);
+        message.error(
+          "送信できませんでした。内容を確認して再試行してください。",
+        );
       }
     } finally {
       sendingRef.current = false;
@@ -157,70 +138,49 @@ export default function MessageComposer({
     }
   };
 
-  const handleEmojiClick = (
-    emojiData: EmojiClickData,
-  ) => {
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
     if (blocked) return;
 
-    if (
-      text.length + emojiData.emoji.length >
-      MAX_TEXT_LENGTH
-    ) {
-      message.warning(
-        'メッセージは500文字以内にしてください',
-      );
+    if (text.length + emojiData.emoji.length > MAX_TEXT_LENGTH) {
+      message.warning("メッセージは500文字以内にしてください");
       return;
     }
 
     setText((current) =>
-      current.length + emojiData.emoji.length <=
-      MAX_TEXT_LENGTH
+      current.length + emojiData.emoji.length <= MAX_TEXT_LENGTH
         ? current + emojiData.emoji
         : current,
     );
   };
 
   const handleFiles = async (files: File[]) => {
-    if (files.length === 0 || readingRef.current || blocked) return;
+    if (!imagesEnabled || files.length === 0 || readingRef.current || blocked)
+      return;
 
     const remaining = MAX_IMAGES - images.length;
 
     if (remaining <= 0) {
-      message.warning('画像は4枚まで選択できます');
+      message.warning("画像は4枚まで選択できます");
       return;
     }
 
     if (files.length > remaining) {
-      message.warning(
-        `追加できる画像は${remaining}枚までです`,
-      );
+      message.warning(`追加できる画像は${remaining}枚までです`);
     }
 
-    const validFiles = files
-      .slice(0, remaining)
-      .filter((file) => {
-        if (
-          ![
-            'image/jpeg',
-            'image/png',
-            'image/webp',
-          ].includes(file.type)
-        ) {
-          message.error(
-            `${file.name}：JPEG・PNG・WebPを選択してください`,
-          );
-          return false;
-        }
+    const validFiles = files.slice(0, remaining).filter((file) => {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        message.error(`${file.name}：JPEG・PNG・WebPを選択してください`);
+        return false;
+      }
 
-        if (file.size > MAX_IMAGE_SIZE) {
-          message.error(
-            `${file.name}：画像は5MB以下にしてください`,
-          );
-          return false;
-        }
+      if (file.size > MAX_IMAGE_SIZE) {
+        message.error(`${file.name}：画像は5MB以下にしてください`);
+        return false;
+      }
 
-        return true;
-      });
+      return true;
+    });
 
     if (validFiles.length === 0) return;
 
@@ -245,18 +205,15 @@ export default function MessageComposer({
       const loadedImages: MessageImage[] = [];
 
       results.forEach((result) => {
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           loadedImages.push(result.value);
         } else {
-          message.error('画像をアップロードできませんでした');
+          message.error("画像をアップロードできませんでした");
         }
       });
 
       setImages((current) =>
-        [...current, ...loadedImages].slice(
-          0,
-          MAX_IMAGES,
-        ),
+        [...current, ...loadedImages].slice(0, MAX_IMAGES),
       );
     } finally {
       readingRef.current = false;
@@ -272,10 +229,7 @@ export default function MessageComposer({
       {images.length > 0 && (
         <div className={styles.attachments}>
           {images.map((image) => (
-            <div
-              key={image.id}
-              className={styles.attachment}
-            >
+            <div key={image.id} className={styles.attachment}>
               <Image
                 src={image.url}
                 alt={image.name}
@@ -292,9 +246,7 @@ export default function MessageComposer({
                 disabled={reading || blocked}
                 onClick={() => {
                   setImages((current) =>
-                    current.filter(
-                      (item) => item.id !== image.id,
-                    ),
+                    current.filter((item) => item.id !== image.id),
                   );
                 }}
               >
@@ -317,7 +269,7 @@ export default function MessageComposer({
         autoSize={{ minRows: 2, maxRows: 5 }}
         onKeyDown={(event) => {
           if (
-            event.key === 'Enter' &&
+            event.key === "Enter" &&
             !event.shiftKey &&
             !event.nativeEvent.isComposing &&
             event.keyCode !== 229
@@ -330,10 +282,7 @@ export default function MessageComposer({
 
       <div className={styles.composerToolbar}>
         <div className={styles.composerTools}>
-          <div
-            ref={emojiWrapperRef}
-            className={styles.emojiWrapper}
-          >
+          <div ref={emojiWrapperRef} className={styles.emojiWrapper}>
             <button
               type="button"
               className={styles.emojiTrigger}
@@ -382,9 +331,13 @@ export default function MessageComposer({
             type="text"
             icon={<PictureOutlined />}
             aria-label="画像を追加"
+            title={imagesEnabled ? "画像を追加" : "画像送信は準備中です"}
             loading={reading}
             disabled={
-              reading || blocked || images.length >= MAX_IMAGES
+              !imagesEnabled ||
+              reading ||
+              blocked ||
+              images.length >= MAX_IMAGES
             }
             onClick={() => {
               setEmojiOpen(false);
@@ -399,11 +352,9 @@ export default function MessageComposer({
             multiple
             hidden
             onChange={(event) => {
-              const files = Array.from(
-                event.target.files ?? [],
-              );
+              const files = Array.from(event.target.files ?? []);
 
-              event.target.value = '';
+              event.target.value = "";
               void handleFiles(files);
             }}
           />
@@ -422,7 +373,9 @@ export default function MessageComposer({
           icon={<SendOutlined />}
           loading={sending}
           disabled={!canSend}
-          onClick={() => { void handleSend(); }}
+          onClick={() => {
+            void handleSend();
+          }}
         >
           送信
         </Button>
